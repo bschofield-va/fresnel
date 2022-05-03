@@ -1,0 +1,29 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+#
+# On Mac, we don't have access to the docker sock in the same
+# way as on Linux. The sock group is not 'docker'. This script
+# will re-assign the group. However, it cannot survice a Docker
+# for Mac restart and may need to be ran several times.
+#
+
+SOCK=/var/run/docker.sock
+
+if [ "$(stat -c %G $SOCK)" != "docker" ]
+then
+  chgrp docker $SOCK
+  echo "Group changed"
+  CHANGED+=g
+fi
+
+if [ "$(stat -c %a $SOCK)" != 775 ]
+then
+  chmod g+w $SOCK
+  echo "Permissions changed"
+  CHANGED+=p
+fi
+
+if [ -z "${CHANGED:-}" ]; then exit; fi
+
+stat -c "%A %U %G %n" $SOCK

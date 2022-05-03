@@ -1,0 +1,37 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+EXCHANGE=/var/run/fresnel
+IN=/var/run/fresnel/in
+OUT=/var/run/fresnel/out
+
+NOW=$(date +%s)
+COMMAND=$1
+shift
+
+CMD_ID=$COMMAND-$NOW
+
+CMD_FILE=$IN/$CMD_ID.cmd
+STATUS_FILE=$OUT/$CMD_ID.cmd.status
+OUTPUT_FILE=$OUT/$CMD_ID.cmd.out
+
+cat > $CMD_FILE <<EOF
+$COMMAND
+$@
+EOF
+
+STATUS=99
+TIMEOUT=$(date +%s -d 'now + 1 minute')
+while [ $(date +%s) -lt $TIMEOUT ]
+do
+  if [ ! -f $STATUS_FILE -o ! -f $OUTPUT_FILE ]; then sleep 0.1s; continue; fi
+  STATUS=$(head $STATUS_FILE)
+  cat $OUTPUT_FILE
+  break
+done
+
+if [ $STATUS == 99 ]
+then
+  echo "timeout" >&2
+fi
+exit $STATUS

@@ -1,0 +1,24 @@
+version: "3.9"
+services:
+  fresnel:
+    build:
+      context: .
+      dockerfile: fresnel.Dockerfile
+      args:
+        FRESNEL_USER_ID: $FRESNEL_USER_ID
+        INSTALL_X_TOOLS: ${INSTALL_X_TOOLS:-false}
+    hostname: fresnel
+    user: dev
+    working_dir: /home/dev
+    environment:
+      - TERM
+      - GIT_CEILING_DIRECTORIES=/va:/home/dev
+      - DISPLAY=host.docker.internal:0
+    privileged: true
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /tmp/.X11-unix:/tmp/.X11-unix:rw
+      - $FRESNEL_EXCHANGE_DIR:/var/run/fresnel
+      - $HOME/.fresnel/home:/home/dev
+      - $HOME/.m2/repository:/repository
+      - $HOME/va:/va

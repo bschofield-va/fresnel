@@ -1,0 +1,27 @@
+#!/bin/sh
+
+cd $(dirname $0)
+HERE=$(pwd)
+cd ..
+. fresnel.env
+
+#
+# Directory where incoming commands are placed
+#
+IN=$FRESNEL_EXCHANGE_DIR/in
+
+#
+# Process any new files
+#
+for file in $(/usr/bin/find $IN -name "*.cmd"); do $HERE/process-one-command $file; done
+
+#
+# Remove any old files
+#
+/usr/bin/find \
+  .fresnel-exchange \
+  '(' -name "*.cmd" -o -name "*.cmd.*" ')' \
+  -a -type f \
+  -a -Bmin +15 \
+  -exec rm {} \;
+

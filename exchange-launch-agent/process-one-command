@@ -1,0 +1,46 @@
+#!/bin/sh
+set -euo pipefail
+
+IN_FILE=$1
+STATUS=99
+
+WORK=$FRESNEL_EXCHANGE_DIR/work
+OUT=$FRESNEL_EXCHANGE_DIR/out
+LOG=$FRESNEL_EXCHANGE_DIR/log
+
+if [ ! -d $WORK ]; then mkdir -p $WORK; fi
+if [ ! -d $OUT ]; then mkdir -p $OUT; fi
+
+WORK_FILE=$WORK/$(basename $IN_FILE)
+STATUS_FILE=$OUT/$(basename $WORK_FILE).status
+OUTPUT_FILE=$OUT/$(basename $WORK_FILE).out
+
+onExit() {
+  if [ -f $IN_FILE ]; then rm $IN_FILE; fi
+  if [ -f $WORK_FILE]; then rm $WORK_FILE; fi
+  echo ${STATUS} > $STATUS_FILE
+  echo "$(date) $(basename $IN_FILE) ${COMMAND:-unknown} ${STATUS}" >> $LOG
+}
+trap onExit EXIT
+
+main() {
+  mv $IN_FILE $WORK_FILE
+  COMMAND=$(head -1 $WORK_FILE)
+  case "$COMMAND" in
+    open) doOpen;;
+    *) doUnknownCommand;;
+  esac
+}
+
+doOpen() {
+  TARGET=$(cat $WORK_FILE | /usr/bin/awk 'NR==2 {print;exit}')
+  open "$TARGET" > $OUTPUT_FILE
+  STATUS=$?
+}
+
+doUnknownCommand() {
+  STATUS=1
+  echo "Unknown command: $COMMAND" >> $OUTPUT_FILE
+}
+
+main

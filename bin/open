@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+#
+# macOs open through command exchange magic
+#
+fresnel-exchange-command open "$1"
