@@ -16,9 +16,10 @@ fsh
 - User `dev` linked to your Mac user ID to keep file permissions sane.
 - `dev` password is `dev` (you shouldn't need it).
 - Passwordless `sudo` capability.
-- Host of utilities include Java, Maven, Git. See [fresnel.Dockerfile](fresnel.Dockerfile).
-- Maven configuration for Lighthouse projects.
 - Docker-in-docker support
+- Standard utilities include Java, Maven, Git. See [fresnel.Dockerfile](fresnel.Dockerfile).
+- Maven configuration for Lighthouse projects.
+- Custom tools to simplify development activities: See [Tools](tools.md).
 
 ### Special locations
 
@@ -67,9 +68,23 @@ To gain access to X applications, like `kdiff3`.
 When X support is available, Fresnel provides mimics of `pbcopy` and `pbpaste` that take advantage of XQuartz clipboard support.
 
 
-## Rough Edges, Annoying, or Completely Borked
+## `open` Support and Fresnel Command Exchange
+To support special operations that allow certain macOs commands to be intiated from within the Docker environment, Fresnel provides a specialized exchange agent.
+While not perfect, the Fresnel Exchange Agent can allow for a more native experience.
+It works by creating a volume to transfer data.
+From within the Docker environment, certain tools can write information to the exhange volume.
+On the host, a macOs launch agent monitors the directory associated to the volume for changes.
+When a change is detected, a tools is launched process the command and record results back to the volume.
+Within the Docker, the command will await a results to be written to volume.
+
+The agent must be installed separately, using [exchange-launch-agent/install](exchange-launch-agent/install)
+
+
+## Rough Edges, Annoying Quirks, or Completely Borked Behaviors
 
 - X support twins `pbcopy` and `pbpaste` will sometimes report an error until something has grabbed focus in X at least once.
+
+- `open` cannot process all macOs open arguments, but can open individual URLs or files shared via a volume mount.
 
 - Sometimes shared GitHub repositories get confused and complain about the owner and suggest to mark it "safe".
 

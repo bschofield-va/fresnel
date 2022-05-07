@@ -1,0 +1,366 @@
+#!/usr/bin/env bash
+set -euo pipefail
+if [ "${DEBUG:-false}" != false ]; then set -x; fi
+
+
+LOG_DIR=/tmp
+CONF_FILE=${CONF_FILE:-~/.config/run-app/apps.conf}
+PROFILE=${PROFILE:-dev}
+declare -A APPS
+
+
+loadConf() {
+  if [ ! -f ${CONF_FILE} ]
+  then
+    createSampleAndDie
+  fi
+  . $CONF_FILE
+}
+
+createSampleAndDie() {
+  mkdir -p $(dirname $CONF_FILE)
+  createSample $CONF_FILE
+  echo "I've created a template configuration for you here: $CONF_FILE"
+  exit 1
+}
+createSample() {
+local destination=${1:-/dev/stdout}
+cat > $destination <<EOF
+#
+# Define any application environment variables
+#
+if [ -z "\${SPRING_PROFILES_ACTIVE:-}" ]
+then
+  export SPRING_PROFILES_ACTIVE=dev,fresnel
+fi
+
+#
+# Define application using the syntax
+# app <name> <fully qualified path to module directory>
+#
+app i /va/lighthouse-mock-mpi/mock-mpi
+app c /va/lighthouse-charon/charon
+app d /va/health-apis-data-query/data-query
+app m /va/health-apis-mpi-fhir-query/mpi-fhir-query
+app v /va/health-apis-vista-fhir-query/vista-fhir-query
+app y /va/health-apis-yanartas/yanartas
+
+EOF
+}
+
+
+app() {
+  if [ $# != 2 ]
+  then
+    echo "Invalid app declaration: $@"
+    echo "app <nickname> <directory>"
+    exit 1
+  fi
+  local nickname=$1
+  local dir=$2
+  APPS[$nickname]=$dir
+}
+
+#============================================================
+status() {
+  cmd=statusFull
+  while [ -n "${1:-}" ]
+  do
+    case "$1" in
+      -b|--brief) cmd=statusBrief;;
+      *) die "Unknown status option: $1";;
+    esac
+    shift
+  done
+  $cmd
+}
+
+statusBrief() {
+  local pid
+  local line=""
+  for n in $(printf "%s\n" ${!APPS[@]} | sort -f)
+  do
+    pid=$(appPid $(appName $n))
+    if [ -z "${pid:-}" ]; then continue; fi
+    if [ -z "${line:-}" ]; then line=$n; else line+=" $n"; fi
+  done
+  if [ -n "${line:-}" ]; then echo "$line" ; fi
+}
+
+statusFull() {
+  for n in ${!APPS[@]}
+  do
+    statusOf $n
+  done | sort -f
+}
+
+statusOf() {
+  local n=$1
+  local app pid dir branch
+  app=$(appName $n)
+  pid=$(appPid $app)
+  dir=${APPS[$n]}
+  cd $dir
+  branch=$(git branch --show-current)
+  printf "%s %-25s %5s %s\n" $n "$app" "${pid:--}" "$branch"
+}
+
+#============================================================
+
+names() {
+  local dir app
+  for n in ${!APPS[@]}
+  do
+    dir=${APPS[$n]}
+    app=$(appName $n)
+    printf "%-3s %-20s %s\n" $n $app $dir
+  done | sort -f
+}
+
+
+#============================================================
+
+start() {
+  if [ $# -eq 0 ]; then usage "No application specified"; fi
+  local apps=()
+  local buildMode=none
+  while [ -n "${1:-}" ]
+  do
+    case $1 in
+      -r|--rebuild) buildMode=full;;
+      -b|--build) buildMode=quick;;
+      *) apps+=($1);;
+    esac
+    shift
+  done
+  for n in ${apps[@]}; do startApp $buildMode $n; done
+}
+
+startApp() {
+  local buildMode=$1
+  local n=$2
+  local dir
+  dir=${APPS[$n]:-}
+  if [ -z "$dir" ]; then die "Unknown app: $n"; fi
+  cd $dir
+  local jar app
+  app=$(appName $n)
+  buildApp $buildMode $app $dir
+  if ! jar=$(find $dir/target/ -maxdepth 1 -name "$app-*.jar" \
+    -not -name "*-tests.jar" -not -name "*-library.jar" 2> /dev/null)
+  then
+    die "Application jar not found"
+  fi
+  if [ -z "${jar:-}" ]; then die "Application jar not found"; fi
+
+  local pid=$(appPid $app)
+  if [ -n "${pid:-}" ]; then echo "$app appears to be running"; return; fi
+
+  local logFile=$LOG_DIR/$app.log
+  echo "Starting $app ($logFile)"
+  date > $logFile
+  if [ -f .run-app ]
+  then
+    export RUN_APP_NAME=$app
+    export RUN_APP_JAR=$jar
+    chmod +x .run-app
+    ./.run-app &>> $logFile &
+  else
+    local options="-Dapp.name=$app"
+    java ${options} -jar "$jar" &>> $logFile &
+  fi
+}
+
+
+
+buildApp() {
+  local mode=$1
+  local app=$2
+  local dir=$3
+  case $mode in
+    quick) buildQuick $app $dir;;
+    full) buildFull $app $dir;;
+  esac
+}
+
+buildQuick() {
+  local app=$1 dir=$2 branch
+  cd $dir
+  branch=$(git branch --show-current)
+  echo "Rebuilding $app on $branch (non-standard, not cleaning, no tests)"
+  find target -maxdepth 1 -name "$app-*.jar" -exec rm {} \;
+  echo -n "Maven "
+  mvn package -P'!standard' -DskipTests -Dmaven.gitcommitid.skip=true \
+    | awk -W interactive '/\[INFO\] --- .*/ { printf "." }'
+  if [ $? != 0 ]; then echo " Aborting" ; exit 1; fi
+  echo " Done"
+}
+
+buildFull() {
+  local app=$1 dir=$2 branch master
+  cd $dir
+  branch=$(git branch --show-current)
+  master=$(git remote show origin | grep 'HEAD branch:' | sed 's/.*: //')
+  echo "Rebuilding repository for $app on $branch (non-standard, no tests)"
+  if [ "$branch" == "$master" ]
+  then
+    echo "Refreshing repository"
+    git pull
+  fi
+  local where=.
+  if [ -f ../pom.xml ]; then where=".."; fi
+  mvn clean install -f $where -P'!standard' -DskipTests -Dmaven.gitcommitid.skip=true
+  if [ $? != 0 ]; then echo "Aborting" ; exit 1; fi
+}
+
+#============================================================
+
+stop() {
+  if [ $# -eq 0 ]; then usage "No application specified"; fi
+  # stop has no option but for simplicity may be passed start options
+  # during a restart... ignore anything starting with a -
+  for n in $@; do if [[ "$n" == -* ]]; then continue; fi; stopApp $n; done
+}
+
+stopApp() {
+  local n=$1
+  local app pid
+  app=$(appName $n)
+  pid=$(appPid $app)
+  if [ -z "${pid:-}" ]
+  then
+    echo "$app does not appear to be running"
+    return
+  fi
+  echo "Stopping $app ($pid)"
+  for i in {1..5}
+  do
+    kill $pid
+    sleep 0.250s
+    pid=$(appPid $app)
+    if [ -z "${pid:-}" ]; then return; fi
+  done
+  echo "Killing $app ($pid)"
+  kill -9 $pid
+}
+
+#============================================================
+
+log() {
+  local follow=false
+  local n
+  while [ -n "${1:-}" ]
+  do
+    case "$1" in
+      -f|--follow) follow=true;;
+      -*) usage "Unknown option to log: $1";;
+      *) n=$1;;
+    esac
+    shift
+  done
+  if [ -z "${n:-}" ]; then die "Application not specified"; fi
+  local app
+  app=$(appName $n)
+  if [ $follow == true ]
+  then
+    tail -F $LOG_DIR/$app.log
+  else
+    cat $LOG_DIR/$app.log
+  fi
+}
+
+#============================================================
+
+appName() {
+  local n=$1
+  local dir=${APPS[$n]}
+  local name
+  name=$(basename $dir|sed 's/^\(health-apis\|lighthouse\)-//')
+  echo $name
+}
+
+appPid() {
+  local app=$1
+  ps -C java -o pid,args | grep -E -- "-Dapp\.name=$app( |\$)" | awk '{print $1}' || true
+}
+
+#============================================================
+usage() {
+a=$(basename $0)
+cat<<EOF
+$0 <command> [arguments]
+
+Manage Java applications.
+Applications are defined by the $a configuration file:
+$CONF_FILE
+
+COMMANDS
+help
+  Print this help and exit.
+help-config
+  Print a documented configuration sample.
+
+start [-b|-r] name [name ...]
+  Start one or more applications.
+  -b, --build    Build just the application
+  -r, --rebuild  Rebuild repository directory, pulling if on primary branch.
+  alias: s
+stop name [name ...]
+  Stop one or more applications.
+  alias: k, kill
+restart [start options] name [name ...]
+  Stop then start one or more applications.
+  alias: r
+log [-f] name
+  Print the logs of an application.
+  -f, --follow   Follow the logs
+  alias: l
+
+status [-b]
+  Print the status of applcations
+  -b, --brief    Print a brief summary of running app names only.
+  alias: st
+names
+  Print the names, application, and directory of all known applications
+
+CUSTOMIZED APPLICATION START
+If the file .run-app is present in the application directory, it will be
+used instead of a simple 'java -jar' command to launch the application.
+
+- The application directory will be the current working directory
+- environment variables will be set
+  - RUN_APP_JAR = path to application jar
+  - RUN_APP_NAME = the application name
+- Application must be launched with the application name using the system
+  property 'app.name'. For example,
+  \$ java -Dapp.name=\$RUN_APP_NAME -jar \$RUN_APP_JAR --some-option=foo
+
+EOF
+die "${1:-}"
+}
+
+die() {
+  echo "${1-}"
+  exit 1
+}
+
+main() {
+  loadConf
+  if [ $# -eq 0 ]; then usage "No command specified"; fi
+  local command=$1
+  shift
+  case $command in
+    -h*|--h*|help) usage;;
+    help-config) createSample;;
+    s|start) start $@;;
+    k|kill|stop) stop $@;;
+    r|restart) stop $@; start $@;;
+    st|status) status $@;;
+    l|log|logs) log $@;;
+    names) names;;
+    *) usage "Unknown command: $command"
+  esac
+}
+
+
+main $@

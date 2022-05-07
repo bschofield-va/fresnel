@@ -6,6 +6,11 @@ HERE=$(pwd)
 cd ..
 . fresnel.env
 
+mkdir -p $FRESNEL_EXCHANGE_DIR/in
+mkdir -p $FRESNEL_EXCHANGE_DIR/work
+mkdir -p $FRESNEL_EXCHANGE_DIR/out
+mkdir -p $FRESNEL_EXCHANGE_DIR/log
+
 PLIST=~/Library/LaunchAgents/fresnel.exchange.plist
 
 cat > $PLIST <<EOF

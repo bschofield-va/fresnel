@@ -1,7 +1,51 @@
 #!/usr/bin/env bash
 set -euo pipefail
+if [ -n "${DEBUG:-}" ]; then set -x; fi
 
 #
 # macOs open through command exchange magic
 #
-fresnel-exchange-command open "$1"
+
+tryConvertToHostPath() {
+  local inside=$1
+  local outside
+  if outside=$(fresnel-host-location -q $inside)
+  then
+    echo $outside
+    return
+  fi
+  echo $inside
+}
+
+usage() {
+cat<<EOF
+$0 [options] <target>
+
+Attempt to open the target on the host.
+Only files shared between the Docker container and host can be opened.
+
+OPTIONS
+-h, --help  Print this help and exit
+
+EOF
+die "${1:-}"
+}
+
+main() {
+  local args
+  args=()
+  while [ -n "${1:-}" ]
+  do
+    case "$1" in
+      -h|--help) usage;;
+      -*|*://*) args+=( "$1" );;
+      *) args+=( "$(tryConvertToHostPath "$1")" );;
+    esac
+    shift
+  done
+  if [ ${#args[@]} -eq 0 ]; then usage "No arguments specified"; fi
+  fresnel-exchange-command open ${args[@]}
+}
+
+
+main $@

@@ -1,0 +1,83 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+declare -A MOUNT
+CONTAINER=
+QUIET=false
+
+die() {
+  if [ $QUIET != false ]; then echo "${1:-}"; fi
+  exit 1
+}
+
+determineContainerNameOrDie() {
+  for name in $(docker ps --format {{.Names}})
+  do
+    if [[ "$name" == *fresnel* ]]
+    then
+      if [ -n "${CONTAINER:-}" ]; then die "Ambiguous fresnel containers: $CONTAINER $name"; fi
+      CONTAINER=$name
+    fi
+  done
+  if [ -z "${CONTAINER:-}" ]; then die "Could not find fresnel container"; fi
+}
+
+determineMounts() {
+  while read inside outside
+  do
+    MOUNT[$inside]=$outside
+  done < <(docker inspect $CONTAINER | jq '.[].Mounts[]|[.Destination,.Source]|join(" ")' -r)
+}
+
+printOutsideEquivalent() {
+  local inside=$(readlink -f $1)
+  local insideMountPoint=$inside
+  while [ "$insideMountPoint" != "/" ]
+  do
+    if [ -n "${MOUNT[$insideMountPoint]:-}" ]; then break; fi
+    insideMountPoint=$(dirname $insideMountPoint)
+  done
+  if [ "$insideMountPoint" == "/" ]; then die "Not shared: $inside"; fi
+  local sharedPath=${inside#*${insideMountPoint}}
+  echo ${MOUNT[$insideMountPoint]}${sharedPath}
+}
+
+usage() {
+cat<<EOF
+$0 [options] <file> [file ...]
+
+Print the location of the same file on the host.
+
+OPTIONS
+-h, --help  Print this help and exit
+
+EOF
+
+die "${1:-}"
+}
+
+main() {
+  local files
+  files=()
+  while [ -n "${1:-}" ]
+  do
+    case "$1" in
+      -h|--help) usage;;
+      -q|--quite) QUIET=true;;
+      -*) usage "Unknown option: $1";;
+      *) files+=( "$1" )
+    esac
+    shift
+  done
+  if [ ${#files[@]} -eq 0 ]; then usage "No files specified"; fi
+  determineContainerNameOrDie
+  determineMounts
+  for inside in ${files[@]}
+  do
+    if [[ "$inside" == -h || "$inside" == --help ]]; then usage; fi
+    printOutsideEquivalent $inside
+  done
+}
+
+main $@
+

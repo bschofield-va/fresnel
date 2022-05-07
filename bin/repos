@@ -1,0 +1,128 @@
+#!/usr/bin/env bash
+set -euo pipefail
+if [ "${DEBUG:-false}" != false ]; then set -x; fi
+
+CONF_FILE=${CONF_FILE:-~/.config/repos/repos.conf}
+
+loadConf() {
+  if [ ! -f ${CONF_FILE} ]
+  then
+    createSampleAndDie
+  fi
+  . $CONF_FILE
+}
+
+createSampleAndDie() {
+  mkdir -p $(dirname $CONF_FILE)
+  createSample $CONF_FILE
+  echo "I've created a template configuration for you here: $CONF_FILE"
+  exit 1
+}
+createSample() {
+local destination=${1:-/dev/stdout}
+cat > $destination <<EOF
+
+#
+# Define Department of Veterans Affairs repositories
+#
+REPOS=(
+  health-apis-exemplar
+  health-apis-exemplar-deployment
+)
+
+EOF
+}
+
+#============================================================
+clone() {
+  for repo in ${REPOS[@]}
+  do
+    if [ ! -d $repo ]
+    then
+      git clone git@github.com:department-of-veterans-affairs/${repo}.git
+    fi
+    NICKNAME=${repo/health-apis-/}
+    NICKNAME=${NICKNAME/lighthouse-/}
+    if [ ! -e $NICKNAME ]
+    then
+      ln -vs $repo $NICKNAME
+    fi
+  done
+}
+
+#============================================================
+add() {
+  if [ $# -eq 0 ]; then usage "No repositories specified"; fi
+  local newConf=$(mktemp)
+  REPOS+=( $@ )
+  rewriteReposInConfFile > $newConf
+  mv $CONF_FILE $CONF_FILE.previous
+  mv $newConf $CONF_FILE
+  echo "Configuration updated and previous saved to $CONF_FILE.previous"
+}
+
+rewriteReposInConfFile() {
+  while read line
+  do
+    if [ "$line" == INSERT_REPOS ]
+    then
+      echo "REPOS=("
+      printf "  %s\n" ${REPOS[@]} | sort -fu
+      echo ")"
+    else
+      echo "$line"
+    fi
+  done < <(sed -e '1h;2,$H;$!d;g' -e 's/REPOS=(\([^)]*\))/INSERT_REPOS/' $CONF_FILE)
+}
+
+#============================================================
+usage() {
+a=$(basename $0)
+cat<<EOF
+$0 <command> [arguments]
+
+Manage Department of Veterans Affairs GitHub repositories.
+Repositories are defined by the $a configuration file:
+$CONF_FILE
+
+COMMANDS
+help
+  Print this help and exit.
+help-config
+  Print a documented configuration sample.
+
+add <repo> [repo ...]
+  Add one more GitHub repositories to you configuration file.
+  Repositories should be listed just as the name, e.g. health-apis-parent
+
+clone
+  Clone any missing repositories and link with a shorter name.
+
+EOF
+die "${1:-}"
+}
+
+die() {
+  echo "${1-}"
+  exit 1
+}
+
+main() {
+  loadConf
+  if [ $# -eq 0 ]; then usage "No command specified"; fi
+  local command=$1
+  shift
+  case $command in
+    -h*|--h*|help) usage;;
+    help-config) createSample;;
+    clone) clone;;
+    add) add $@;;
+    *) usage "Unknown command: $command"
+  esac
+
+}
+
+main $@
+
+exit
+
