@@ -1,0 +1,86 @@
+#!/usr/bin/env bash
+# Print the content of this file as template to create a new script
+awk 'NR > 4' $(readlink -f $0) ; exit 0
+#-- template starts below this line --
+#!/usr/bin/env bash
+set -euo pipefail
+if [ "${DEBUG:-false}" != false ]; then set -x; fi
+
+APP_NAME=$(basename $(readlink -f $0))
+CONF_FILE=${CONF_FILE:-~/.config/$APP_NAME/$APP_NAME.conf}
+
+
+#============================================================
+usage() {
+cat<<EOF
+$0 <command> [arguments]
+
+help me.
+
+$a configuration file: $CONF_FILE
+
+COMMANDS
+help
+  Print this help and exit.
+help-config
+  Print a documented configuration sample.
+
+some-command [-a|-b] name [name ...]
+  Do a thing.
+  -a, --amazing  Activate amazing mode.
+  -b, --bogus    Nvm. Don't be amazing.
+  alias: s
+
+EOF
+die "${1:-}"
+}
+
+die() {
+  echo "${1-}"
+  exit 1
+}
+
+main() {
+  if [ $# -eq 0 ]; then usage "No command specified"; fi
+  local command=$1
+  shift
+  case $command in
+    -h*|--h*|help) usage;;
+    help-config) createSample;;
+    *) usage "Unknown command: $command"
+  esac
+}
+
+
+#============================================================
+
+loadConf() {
+  if [ ! -f ${CONF_FILE} ]
+  then
+    createSampleAndDie
+  fi
+  . $CONF_FILE
+}
+
+createSampleAndDie() {
+  mkdir -p $(dirname $CONF_FILE)
+  createSample $CONF_FILE
+  echo "I've created a template configuration for you here: $CONF_FILE"
+  exit 1
+}
+
+createSample() {
+local destination=${1:-/dev/stdout}
+cat > $destination <<EOF
+#
+# $APP_NAME Configuration
+#
+
+EOF
+}
+
+
+
+#============================================================
+
+main $@

@@ -1,0 +1,171 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+LOCAL_DOCKER_OCTOPUS=/va/health-apis-docker-octopus
+
+#============================================================
+usage() {
+a=$(basename $0)
+cat<<EOF
+$0 [<command>]
+
+Encode and decode deployment units files in the current directory.
+
+Ryan Secrets
+$a requires ryan-secrets from Doctor Octopus deployment tools.
+ryan-secrets will be used from a local clone of Docker Octopus
+if available at $LOCAL_DOCKER_OCTOPUS. Otherwise,
+'gh' will be used to retrieve it. You must be logged with 'gh'.
+Downloaded versions of ryan-secrets will be reused for one day.
+
+COMMANDS
+help
+  Print this help and exit.
+
+encrypy
+  Encrypt all .conf and .testvars files in the directory of contents.
+  alias: e
+decrypt
+  Decrypt all .conf and .testvars files in the directory of contents.
+  alias: d
+toggle (default command)
+  Toggle the encrypted/decrypted state of files in the directory
+  alias: t
+diff
+  Compare the files in this directory with decrypted versions on the
+  default branch, e.g. master or main.
+
+EOF
+die "${1:-}"
+}
+
+die() {
+  echo "${1-}"
+  exit 1
+}
+
+main() {
+  local command
+  if [ $# -eq 0 ]
+  then
+    command=toggle
+  else
+    command=$1; shift
+  fi
+  case $command in
+    -h*|--h*|help) usage;;
+    d|decrypt) execRyanSecrets decrypt-all $@;;
+    e|encrypt) execRyanSecrets encrypt-all $@;;
+    t|toggle) toggleFiles $@;;
+    diff) diffDu;;
+    *) usage "Unknown command: $command"
+  esac
+}
+
+#============================================================
+checkPassphrase() {
+  if [ -n "${DU_ENCRYPTION_KEY:-}" ]; then return; fi
+  if [ -z "${ENCRYPTION_PASSPHRASE:-}" ]; then DU_ENCRYPTION_KEY="${ENCRYPTION_PASSPHRASE}"; fi
+  if [ -z "${DU_CRYPTO_KEY:-}" ]; then DU_ENCRYPTION_KEY="${DU_CRYPTO_KEY}"; fi
+  usage "Encryption passphrase is not specified."
+}
+
+checkDu() {
+  local dir="$1"
+  if [ ! -d "$dir" ]; then usage "Directory not found: $dir"; fi
+  if [ ! -f "$dir/qa.conf" ]; then usage "Missing qa.conf: $dir"; fi
+}
+
+
+findRyanSecrets() {
+  local ryanSecretsPath=deploy-tools/deployer/ryan-secrets
+  RYAN_SECRETS=$LOCAL_DOCKER_OCTOPUS/$ryanSecretsPath
+  if [ -f ${RYAN_SECRETS} ]; then return; fi
+  #
+  # Here's where we could download ryan-secrets from GitHub using 'gh api'
+  # Future me problem
+  #
+  RYAN_SECRETS=/tmp/ryan-secrets
+  if [ -f $RYAN_SECRETS ]
+  then
+    local age=$(( $(date +%s) - $(stat -c %Y $RYAN_SECRETS)))
+    if [ $age -lt 84600 ]
+    then
+      echo "Using previously downloaded version of Ryan Secrets"
+      return
+    fi
+  fi
+  echo "Ryan Secrets not found locally. Downloading from GitHub"
+  if ! gh api /repos/department-of-veterans-affairs/health-apis-docker-octopus/contents/$ryanSecretsPath \
+    | jq .content -r \
+    | base64 -d \
+    > $RYAN_SECRETS
+  then
+    die "Failed to download ryan-secrets"
+  fi
+  chmod +x $RYAN_SECRETS
+}
+
+execRyanSecrets() {
+  local action="$1"; shift
+  local dir="."
+  checkDu "$dir"
+  checkPassphrase
+  findRyanSecrets
+  $RYAN_SECRETS $action \
+    --encryption-passphrase "$DU_ENCRYPTION_KEY" \
+    --directory $dir \
+    $@
+}
+
+#============================================================
+
+toggleFiles() {
+  local dir="."
+  checkDu "$dir"
+  cd $dir
+  local currentState
+  currentState=$(head -1 qa.conf)
+  if [[ "$currentState" == *decrypted* ]]
+  then
+    execRyanSecrets encrypt-all
+  elif [[ "$currentState" == *encrypted* ]]
+  then
+    execRyanSecrets decrypt-all
+  else
+    die "Cannot determine if files are encrypted or decrypted."
+  fi
+}
+
+#============================================================
+
+diffDu() {
+  local dir="."
+  checkDu "$dir"
+  cd "$dir"
+  local master
+  master=$(mktemp -d -p $(pwd) master.XXXX)
+  trap "rm -rf $master" EXIT
+  local repo
+  repo=$(git remote get-url origin)
+  git clone $repo $master
+  (
+    cd $master
+    execRyanSecrets decrypt-all
+  )
+  local mainBranch=$(git symbolic-ref HEAD --short)
+  for f in $(git status -s | grep "^ M" | cut -c4-)
+  do
+    if diff -s --color=always $master/$f $f > $master/diff.out
+    then
+      continue
+    fi
+    echo -e "\n"
+    echo "--- a/$mainBranch/$f"
+    echo "+++ b/yours/$f"
+    cat $master/diff.out
+  done
+}
+
+#============================================================
+main $@

@@ -27,6 +27,7 @@ RUN apt-get install -y -q docker docker-compose
 #
 RUN apt-get install -y -q \
   bash-completion \
+  bc \
   curl \
   dos2unix \
   emacs-nox \
