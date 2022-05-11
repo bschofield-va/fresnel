@@ -1,0 +1,270 @@
+#!/usr/bin/env bash
+set -euo pipefail
+if [ "${DEBUG:-false}" != false ]; then set -x; fi
+
+APP_NAME=$(basename $(readlink -f $0))
+CONF_FILE=${CONF_FILE:-~/.config/$APP_NAME/$APP_NAME.conf}
+PR_NDJSON_FILE=/tmp/$APP_NAME.json
+PR_LIST_EXPIRATION=30 # seconds
+ORGANIZATION=department-of-veterans-affairs
+PR_STATE=open
+
+
+#============================================================
+usage() {
+cat<<EOF
+$0 [command] [arguments]
+
+Print information about interesting PRs.
+Information about PRs is cached locally for $PR_LIST_EXPIRATION seconds.
+
+WHAT'S INTERESTING
+- PRs where your team is a requested reviewer
+- PRs where you are involved
+- PRs for repositories you find interesting
+
+Define interesting PRs in your configuration file.
+
+$APP_NAME configuration file: $CONF_FILE
+
+COMMANDS
+help
+  Print this help and exit.
+help-config
+  Print a documented configuration sample.
+
+list [options] (default command)
+  List interesting PRs
+  -f, --force  Force refresh of cached PR data.
+   --no-color  Do not colorize output.
+  alias: l, ls
+
+count
+  Count the number of interesting PRs.
+
+  Count is intended to very fast and usable in a prompt.
+  Count will print the _last_ cached results. If the last data
+  is stale, the count will be printed, then refreshed in the
+  backgroun for the next count call.
+
+refresh [options]
+  Refresh cached PR data, but print nothing.
+  -f, --force  Force refresh of cached PR data.
+
+
+EOF
+die "${1:-}"
+}
+
+die() {
+  echo "${1-}"
+  exit 1
+}
+
+main() {
+  if [ $# -eq 0 ]
+  then
+    command=list
+  else
+    command=$1; shift
+  fi
+  case $command in
+    -h*|--h*|help) usage;;
+    help-config) createSample;;
+    l|ls|list) listPrs $@;;
+    count) countPrs $@;;
+    refresh) refreshPrs $@;;
+    *) usage "Unknown command: $command"
+  esac
+}
+
+
+#============================================================
+
+loadConf() {
+  if [ ! -f ${CONF_FILE} ]
+  then
+    createSampleAndDie
+  fi
+  . $CONF_FILE
+}
+
+createSampleAndDie() {
+  mkdir -p $(dirname $CONF_FILE)
+  createSample $CONF_FILE
+  echo "I've created a template configuration for you here: $CONF_FILE"
+  exit 1
+}
+
+createSample() {
+local destination=${1:-/dev/stdout}
+cat > $destination <<EOF
+#
+# $APP_NAME Configuration
+#
+
+#
+# Your team
+#
+TEAM=department-of-veterans-affairs/lighthouse-shanktopus
+
+#
+# List of neato bandito repositories
+#
+REPOS=(
+  health-apis-cerner-fhir-query
+  health-apis-cerner-fhir-query-deployment
+  health-apis-deployer
+  health-apis-docker-octopus
+  health-apis-exemplar
+  health-apis-exemplar-deployment
+  health-apis-fhir-resources
+  health-apis-ids
+  health-apis-mpi-fhir-query
+  health-apis-mpi-fhir-query-deployment
+  health-apis-parent
+  health-apis-promotatron
+  health-apis-vista-fhir-query
+  health-apis-vista-fhir-query-deployment
+  health-apis-yanartas
+  health-apis-yanartas-deployment
+  lighthouse-charon
+  lighthouse-charon-deployment
+  lighthouse-master-patient-index
+  lighthouse-mock-mpi
+  lighthouse-mock-mpi-deployment
+  lighthouse-oauth-java
+  lighthouse-talos
+  lighthouse-vista-docker
+  lighthouse-vistalink-mcode
+  shanktopus
+)
+
+EOF
+}
+
+#============================================================
+
+isSavedPrListUsuable() {
+  if [ -f $PR_NDJSON_FILE ]
+  then
+    local age=$(stat -c %Y $PR_NDJSON_FILE)
+    local tooOld=$(( $(date +%s) - $PR_LIST_EXPIRATION ))
+    if [ $age -gt $tooOld ]; then return 0; fi
+  fi
+  return 1
+}
+
+savePrList() {
+  if isSavedPrListUsuable; then return; fi
+  local resultsDir=$(mktemp -d)
+  trap "rm -rf $resultsDir" EXIT
+  searchPrs --review-requested $TEAM > $resultsDir/team.json &
+  searchPrs --repo $(printf "$ORGANIZATION/%s\n" ${REPOS[@]} | paste -sd,) > $resultsDir/repos.json &
+  searchPrs --involves $GITHUB_USERNAME > $resultsDir/me.json &
+  wait
+  cat $resultsDir/*.json | sort -u > $PR_NDJSON_FILE
+}
+
+searchPrs() {
+  gh search prs \
+    --json author,number,title,url,updatedAt \
+    --sort created \
+    --state $PR_STATE \
+    $@ | jq .[] -c
+}
+
+
+#============================================================
+
+prettyDate() {
+  local iso8601=$1
+  awk -v date="$(date +%s -d "$1")" -v now="$(date +%s)" '
+    BEGIN {  diff = now - date;
+       if (diff > (24*60*60)) printf "%2.0f days", diff/(24*60*60);
+       else if (diff > (60*60)) printf "%2.0f hours", diff/(60*60);
+       else if (diff > 60) printf "%2.0f minutes", diff/60;
+       else printf "%2s seconds", diff;
+    }'
+}
+
+shortRepoName() {
+  local repo=$1
+  repo=${repo/lighthouse-/}
+  repo=${repo/health-apis-/}
+  repo=${repo/-deployment/-du}
+  local abbrevs=2
+  while [[ ${#repo} -gt 10 && "$repo" = *-* && $abbrevs -gt 0 ]]
+  do
+    repo=$(echo -n "$repo" | sed 's/\b\([a-z]\)\([a-z]\+\)/\1/')
+    let abbrevs-=1
+  done
+  echo $repo
+}
+
+countPrs() {
+  loadConf
+  local count=?
+  if [ -f $PR_NDJSON_FILE ]; then count=$(cat $PR_NDJSON_FILE | wc -l); fi
+  if ! isSavedPrListUsuable
+  then
+    $0 refresh & disown
+  fi
+  echo $count
+}
+
+refreshPrs() {
+  loadConf
+  while [ -n "${1:-}" ]
+  do
+    case "$1" in
+      -f|--force) PR_LIST_EXPIRATION=0;;
+      *) die "Unknown list option: $1";;
+    esac
+    shift
+  done
+  savePrList
+}
+
+listPrs() {
+  loadConf
+  local pattern
+  pattern="\e[1m%-15s\e[m  \e[1;30m%3d\e[m  \e[2m%3s\e[m  \e[1;30m%2d %-7s\e[m  %-40s  \e[2;36m%s\e[m\n"
+
+  while [ -n "${1:-}" ]
+  do
+    case "$1" in
+      --no-color) pattern="%-15s  %3d  %3s  %2d %-7s  %-40s  %s\n";;
+      -f|--force) PR_LIST_EXPIRATION=0;;
+      *) die "Unknown list option: $1";;
+    esac
+    shift
+  done
+
+  savePrList
+
+  local url number author updated title
+  while read line
+  do
+    url=${line%% *}; line=${line#* }
+    repo=$(echo -n "${url}" | cut -d / -f 5)
+    number=${line%% *}; line=${line#* }
+    author=${line%% *}; line=${line#* }
+    updated=${line%% *}; line=${line#* }
+    title=${line}
+
+    printf "$pattern" \
+      "$(shortRepoName ${repo})" \
+      "${number}" \
+      "${author:0:3}" \
+      $(prettyDate ${updated}) \
+      "${title:0:40}" \
+      "${url}"
+  done < <(cat $PR_NDJSON_FILE | jq -r '[.url,.number,.author.login,.updatedAt,.title]|join(" ")')
+}
+
+
+
+#============================================================
+
+main $@

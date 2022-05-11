@@ -78,11 +78,13 @@ status() {
 statusBrief() {
   local pid
   local line=""
+  local marker=
   for n in $(printf "%s\n" ${!APPS[@]} | sort -f)
   do
     pid=$(appPid $(appName $n))
-    if [ -z "${pid:-}" ]; then continue; fi
-    if [ -z "${line:-}" ]; then line=$n; else line+=" $n"; fi
+    marker=$n
+    if [ -z "${pid:-}" ]; then marker=-; fi
+    if [ -z "${line:-}" ]; then line=$marker; else line+="$marker"; fi
   done
   if [ -n "${line:-}" ]; then echo "$line" ; fi
 }
@@ -141,7 +143,7 @@ startApp() {
   local n=$2
   local dir
   dir=${APPS[$n]:-}
-  if [ -z "$dir" ]; then die "Unknown app: $n"; fi
+  if [ -z "$dir" ]; then die "Unknown application: $n"; fi
   cd $dir
   local jar app
   app=$(appName $n)
@@ -190,9 +192,13 @@ buildQuick() {
   echo "Rebuilding $app on $branch (non-standard, not cleaning, no tests)"
   find target -maxdepth 1 -name "$app-*.jar" -exec rm {} \;
   echo -n "Maven "
-  mvn package -P'!standard' -DskipTests -Dmaven.gitcommitid.skip=true \
+  if ! mvn package -P'!standard' -DskipTests -Dmaven.gitcommitid.skip=true \
     | awk -W interactive '/\[INFO\] --- .*/ { printf "." }'
-  if [ $? != 0 ]; then echo " Aborting" ; exit 1; fi
+  then
+    echo " Aborting"
+    echo "Try running with --rebuild instead of --build"
+    exit 1
+  fi
   echo " Done"
 }
 
@@ -271,9 +277,54 @@ log() {
 
 #============================================================
 
+normalizeArguments() {
+  local normalized=()
+  local maybe
+  for arg in $@
+  do
+    # An option, e.g. --build
+    if [[ "$arg" == -* ]]; then normalized+=( $arg ); continue; fi
+    # A normal application ID, e.g. v
+    if [ -n "${APPS[$arg]:-}" ]; then normalized+=( $arg ); continue; fi
+    # A complete application name, e.g. vista-fhir-query
+    maybe=$(findIdByName $arg)
+    if [ -n "${maybe:-}" ]; then normalized+=( $maybe ); continue; fi
+    # Multiple applications specified together, e.g. vcy
+    maybe=$(findIdsFromSingleWord $arg)
+    if [ -n "${maybe:-}" ]; then normalized+=( $maybe ); continue; fi
+  done
+  echo "${normalized[@]}"
+}
+
+findIdByName() {
+  local name="${1:-}"
+  if [ -z "${name:-}" ]; then return; fi
+  for n in ${!APPS[@]}
+  do
+    if [ "$(appName $n)" == $name ]; then echo $n; return; fi
+  done
+}
+
+findIdsFromSingleWord() {
+  local word="${1:-}"
+  local normalized=()
+  for (( i=0; i < ${#word}; i++))
+  do
+    id=${word:$i:1}
+    # At least one letter is not an application
+    if [ -z "${APPS[$id]:-}" ]; then return; fi
+    normalized+=( $id )
+  done
+  echo "${normalized[@]}"
+}
+
+#============================================================
+
+
 appName() {
   local n=$1
-  local dir=${APPS[$n]}
+  local dir=${APPS[$n]:-}
+  if [ -z "${dir}" ]; then die "Unknown application: $n"; fi
   local name
   name=$(basename $dir|sed 's/^\(health-apis\|lighthouse\)-//')
   echo $name
@@ -323,6 +374,12 @@ status [-b]
 names
   Print the names, application, and directory of all known applications
 
+APPLICATION NAMES
+Commands that accept application names may use
+- the long application name (e.g., vista-fhir-query)
+- the abbreviation (e.g., v)
+- multiple abbreviations specified as one arguments (e.g., vcy)
+
 CUSTOMIZED APPLICATION START
 If the file .run-app is present in the application directory, it will be
 used instead of a simple 'java -jar' command to launch the application.
@@ -340,7 +397,7 @@ die "${1:-}"
 }
 
 die() {
-  echo "${1-}"
+  echo "${1-}" >&2
   exit 1
 }
 
@@ -349,14 +406,15 @@ main() {
   if [ $# -eq 0 ]; then usage "No command specified"; fi
   local command=$1
   shift
+  args=$(normalizeArguments $@)
   case $command in
     -h*|--h*|help) usage;;
     help-config) createSample;;
-    s|start) start $@;;
-    k|kill|stop) stop $@;;
-    r|restart) stop $@; start $@;;
-    st|status) status $@;;
-    l|log|logs) log $@;;
+    s|start) start $args;;
+    k|kill|stop) stop $args;;
+    r|restart) stop $args; start $args;;
+    st|status) status $args;;
+    l|log|logs) log $args;;
     names) names;;
     *) usage "Unknown command: $command"
   esac

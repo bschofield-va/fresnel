@@ -1,9 +1,17 @@
 #!/usr/bin/env bash
 set -euo pipefail
+if [ "${DEBUG:-false}" != false ]; then set -x; fi
 cd $(dirname $0)
 . fresnel.env
 
 
+determineTimezone() {
+  # Guess which timezone
+  if [ "${FRESNEL_TIMEZONE:-automatic}" == automatic ]
+  then
+    export FRESNEL_TIMEZONE=$(stat -c %N /etc/localtime | cut -d "'" -f 4 | sed 's/.*zoneinfo\///')
+  fi
+}
 
 
 doSomethingWithX11() {
@@ -32,6 +40,7 @@ doSomethingWithX11() {
 }
 
 
+determineTimezone
 doSomethingWithX11
 docker compose build $@
 docker compose up -d --force-recreate

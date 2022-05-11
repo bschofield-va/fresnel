@@ -1,0 +1,26 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+dockerLogin() {
+  local repo=$1
+  local userVar=$2
+  local pwVar=$3
+  local user=${!userVar:-}
+  local pw=${!pwVar:-}
+  if [ -z "${user:-}" -o -z "${pw:-}" ]
+  then
+    echo "Set $userVar and $pwVar to login to $repo"
+    return
+  fi
+  echo -n "Logging into $repo ... "
+  if ! echo "${pw}" | docker login $repo --password-stdin --username "${user}" > /dev/null 2>&1
+  then
+    echo "FAILED"
+  fi
+  echo "OK"
+}
+
+
+dockerLogin docker.io DOCKER_USERNAME DOCKER_PASSWORD
+dockerLogin ghcr.io GITHUB_USERNAME GITHUB_TOKEN
+

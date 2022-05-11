@@ -36,6 +36,8 @@ Utilities require certain environment variables and will complain if not set.
 
 ### `init-maven-settings`
 
+Create ~/.m2/settings.xml suitable for use with Lighthouse.
+
 Initialization variables
 - `MVN_MASTER_PASSWORD` -(optional) - Used to encrypt Maven passwords
 - `HEALTH_APIS_RELEASES_NEXUS_USERNAME` - User name for the Health APIs Nexus server
@@ -50,6 +52,18 @@ Docker is available in Fresnel and can be used as is with `sudo`, e.g., `sudo do
 If you wish to use Docker without `sudo`, you can run this script to alter the Docker sock permissions on Mac hosts.
 
 > NOTE: Restarting Docker Desktop will reset the Docker sock permissions and this script will need to be ran again.
+
+
+### `init-docker-login`
+
+Loging to Docker repositories used by Lighthouse.
+
+Initialization variables
+- `DOCKER_USERNAME` - Username for Dockerhub access
+- `DOCKER_PASSWORD` - Dockerhub password
+- `GITHUB_USERNAME` - User name for GitHub Packages access
+- `GITHUB_TOKEN` - GitHub access token to use for accessing GitHub packages
+
 
 
 ## Performance

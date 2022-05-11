@@ -31,6 +31,7 @@ RUN apt-get install -y -q \
   curl \
   dos2unix \
   emacs-nox \
+  gettext-base \
   git \
   git-crypt \
   gpg \
@@ -39,6 +40,7 @@ RUN apt-get install -y -q \
   openssl \
   man-db \
   sudo \
+  tmux \
   unzip \
   vim \
   zip
@@ -82,6 +84,13 @@ RUN if [ -z "$FRESNEL_USER_ID" ]; then echo "FRESNEL_USER_ID is not defined"; ex
 
 
 #
+# Timezone
+#
+ARG FRESNEL_TIMEZONE
+RUN if [ - "$FRESNEL_TIMEZONE" ]; then ln -sf /usr/share/zoneinfo/$FRESNEL_TIMEZONE /etc/localtime; fi
+
+
+#
 # Maven
 #
 ARG MVN_VERSION=3.8.5
@@ -99,6 +108,14 @@ RUN test "${INSTALL_X_TOOLS:-}" = "true" \
   && apt-get install -y -q \
   xclip \
   kdiff3
+
+
+#
+# Because I use the fastest terminal I can find, install Alacritty terminfo.
+#
+RUN curl -sL https://github.com/alacritty/alacritty/releases/latest/download/alacritty.info -o /tmp/alacritty.info \
+ && tic -xe alacritty,alacritty-direct /tmp/alacritty.info \
+ && rm /tmp/alacritty.info
 
 
 #

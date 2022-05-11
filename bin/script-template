@@ -17,7 +17,7 @@ $0 <command> [arguments]
 
 help me.
 
-$a configuration file: $CONF_FILE
+$APP_NAME configuration file: $CONF_FILE
 
 COMMANDS
 help
