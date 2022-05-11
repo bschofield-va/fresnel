@@ -5,7 +5,7 @@ if [ "${DEBUG:-false}" != false ]; then set -x; fi
 APP_NAME=$(basename $(readlink -f $0))
 CONF_FILE=${CONF_FILE:-~/.config/$APP_NAME/$APP_NAME.conf}
 PR_NDJSON_FILE=/tmp/$APP_NAME.json
-PR_LIST_EXPIRATION=30 # seconds
+PR_LIST_EXPIRATION=300 # seconds
 ORGANIZATION=department-of-veterans-affairs
 PR_STATE=open
 
@@ -64,8 +64,14 @@ die() {
 main() {
   if [ $# -eq 0 ]
   then
+    # prs
+    command=list
+  elif [[ $1 == -* ]]
+  then
+    # prs --force
     command=list
   else
+    # prs <command> [options]
     command=$1; shift
   fi
   case $command in
@@ -208,7 +214,7 @@ countPrs() {
   if [ -f $PR_NDJSON_FILE ]; then count=$(cat $PR_NDJSON_FILE | wc -l); fi
   if ! isSavedPrListUsuable
   then
-    $0 refresh & disown
+    nohup $0 refresh > /dev/null 2>&1 &
   fi
   echo $count
 }
