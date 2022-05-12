@@ -1,0 +1,81 @@
+#!/usr/bin/env bash
+set -euo pipefail
+if [ "${DEBUG:-false}" != false ]; then set -x; fi
+
+#
+# Default MacOS readlink cannot handle non-links
+#
+APP_NAME=$(/usr/bin/readlink $0) || true
+if [ -z "${APP_NAME:-}" ]; then APP_NAME=$0; fi
+APP_NAME=$(basename $APP_NAME)
+
+CISCO_VPN=/opt/cisco/anyconnect/bin/vpn
+VPN_HOST=mobility.bah.com
+
+#============================================================
+usage() {
+cat<<EOF
+$0 <command> [arguments]
+
+help me.
+
+COMMANDS
+help
+  Print this help and exit.
+
+some-command [-a|-b] name [name ...]
+  Do a thing.
+  -a, --amazing  Activate amazing mode.
+  -b, --bogus    Nvm. Don't be amazing.
+  alias: s
+
+EOF
+die "${1:-}"
+}
+
+die() {
+  echo "${1-}"
+  exit 1
+}
+
+main() {
+  if [ $# -eq 0 ]; then usage "No command specified"; fi
+  local command=$1
+  shift
+  case $command in
+    -h*|--h*|help) usage;;
+    v|vpn) vpn $@;;
+    *) usage "Unknown command: $command"
+  esac
+}
+
+
+#============================================================
+
+vpn() {
+  if [ $# -eq 0 ]; then usage "No sub-command specified"; fi
+  local command=$1
+  shift
+  case $command in
+    u|up|c|connect) vpnUp;;
+    d|dn|down|dis|disconnect) vpnDown;;
+    st|status) vpnStatus;;
+    *) usage "Unknown vpn sub-command: $command";;
+  esac
+}
+
+vpnUp() {
+  $CISCO_VPN connect $VPN_HOST
+}
+
+vpnDown() {
+  $CISCO_VPN disconnect $VPN_HOST
+}
+
+vpnStatus() {
+  $CISCO_VPN status | grep state | sed 's/.*: //' | sort -u
+}
+
+#============================================================
+
+main $@
