@@ -191,12 +191,16 @@ buildQuick() {
   branch=$(git branch --show-current)
   echo "Rebuilding $app on $branch (non-standard, not cleaning, no tests)"
   find target -maxdepth 1 -name "$app-*.jar" -exec rm {} \;
+  local buildLog=$(mktemp)
+  trap "rm $buildLog" EXIT
   echo -n "Maven "
   if ! mvn package -P'!standard' -DskipTests -Dmaven.gitcommitid.skip=true \
+    | tee $buildLog \
     | awk -W interactive '/\[INFO\] --- .*/ { printf "." }'
   then
     echo " Aborting"
     echo "Try running with --rebuild instead of --build"
+    cat $log
     exit 1
   fi
   echo " Done"

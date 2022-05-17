@@ -9,6 +9,7 @@ script-template   Generate a template for a new script
 prs               Print interesting GitHub Pull Requests
 repos             GitHub repository management
 run-app           Build and run Java applications
+secrets           Manage development secrets
 ```
 
 
