@@ -87,7 +87,7 @@ RUN if [ -z "$FRESNEL_USER_ID" ]; then echo "FRESNEL_USER_ID is not defined"; ex
 # Timezone
 #
 ARG FRESNEL_TIMEZONE
-RUN if [ - "$FRESNEL_TIMEZONE" ]; then ln -sf /usr/share/zoneinfo/$FRESNEL_TIMEZONE /etc/localtime; fi
+RUN if [ -n "$FRESNEL_TIMEZONE" ]; then ln -sf /usr/share/zoneinfo/$FRESNEL_TIMEZONE /etc/localtime; fi
 
 
 #
@@ -104,10 +104,7 @@ RUN curl -sL \
 # X11 support
 #
 ARG INSTALL_X_TOOLS
-RUN test "${INSTALL_X_TOOLS:-}" = "true" \
-  && apt-get install -y -q \
-  xclip \
-  kdiff3
+RUN if [ "${INSTALL_X_TOOLS:-}" = "true" ]; then apt-get install -y -q xclip kdiff3; fi
 
 
 #
