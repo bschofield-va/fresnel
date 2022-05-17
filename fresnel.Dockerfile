@@ -104,10 +104,7 @@ RUN curl -sL \
 # X11 support
 #
 ARG INSTALL_X_TOOLS
-RUN test "${INSTALL_X_TOOLS:-}" = "true" \
-  && apt-get install -y -q \
-  xclip \
-  kdiff3
+RUN if [ "${INSTALL_X_TOOLS:-}" = "true" ]; then apt-get install -y -q xclip kdiff3; fi
 
 
 #
