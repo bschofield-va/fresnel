@@ -6,6 +6,7 @@ Consult each tool for usage details, except macOs work-alike tools.
 ```
 dtk               Deployment Unit management
 script-template   Generate a template for a new script
+kibana-proxy      An HTTP over SOCKS proxy for API Gateway Kibana access
 prs               Print interesting GitHub Pull Requests
 repos             GitHub repository management
 run-app           Build and run Java applications

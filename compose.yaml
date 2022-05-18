@@ -19,7 +19,13 @@ services:
       - DISPLAY=host.docker.internal:0
     privileged: true
     ports:
-      - "2001" # Socks tunnel
+      - "2002:2002" # HTTP proxy over socks tunnel
+      - "8040:8040" # mpi-fhir-query
+      - "8050:8050" # charon
+      - "8070:8070" # cerner-fhir-query
+      - "8090:8090" # data-query
+      - "8095:8095" # vista-fhir-query
+      - "9090:9090" # mock-mpi
     volumes:
       - ./bin:/fresnel-dev/bin
       - /var/run/docker.sock:/var/run/docker.sock

@@ -41,6 +41,7 @@ RUN apt-get install -y -q \
   man-db \
   sudo \
   tmux \
+  tinyproxy \
   unzip \
   vim \
   zip

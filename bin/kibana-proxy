@@ -1,0 +1,142 @@
+#!/usr/bin/env bash
+set -euo pipefail
+if [ "${DEBUG:-false}" != false ]; then set -x; fi
+
+APP_NAME=$(basename $(readlink -f $0))
+
+PORT_SOCKS=2001
+PORT_HTTP=2002
+CHILD_PROCESSES=()
+
+KONG_PROD=vpc-dvp-prod-kong-logs-lxxvek5z56mgfqmvkwzjeqiadi.us-gov-west-1.es.amazonaws.com
+KONG_SANDBOX=vpc-dvp-sandbox-kong-logs-fsmebuxacgah7i756siqpaprji.us-gov-west-1.es.amazonaws.com
+
+
+
+#============================================================
+usage() {
+cat<<EOF
+$0 [command]
+
+Open a SOCKS tunnel to route requests to the Kibana server, then
+open an HTTP proxy that routes HTTP requests through the SOCKS
+tunnel. The HTTP proxy is has Docker port forwarding to be used
+outside of the Fresnel container on port ${PORT_HTTP}.
+
+HOW TO USE
+Inside Fresnel:
+- Define the private key that matches the public key registered
+  with vets.gov SOCKS access in the VETSGOV_PRIVATE_KEY.
+  environment variable
+- Start the SSH tunnel and HTTP proxy server using:
+  $0
+
+Outside Fresnel:
+- Configure your web browser of choice to use http://localhost:${PORT_HTTP}
+  as an HTTP proxy.
+
+Consider a browser extension similar to Proxy Switcher and Manager
+that allows you configure site specific proxies.
+See https://chrome.google.com/webstore/detail/proxy-switcher-and-manage/onnfghpihccifgojkpnnncpagjcdbjod
+
+Example Autoproxy script:
+
+  function FindProxyForURL(url, host) {
+    proxy = "PROXY 127.0.0.1:2002"
+    if (shExpMatch(host, "${KONG_PROD}*")
+      || shExpMatch(host, "${KONG_SANDBOX}*")
+    {
+      return proxy;
+    }
+    return "DIRECT";
+  }
+
+
+ENVIRONMENT VARIABLES
+VETSGOV_PRIVATE_KEY
+  The path to your vet.gov private key. This identity will be added to
+  an ssh-agent that is created during the tunneling process.
+
+COMMANDS
+help
+  Print this help and exit.
+
+[start]
+  Start the SSH socks proxy tunnel and HTTP proxy server
+  default command
+
+EOF
+die "${1:-}"
+}
+
+die() {
+  echo "${1-}"
+  exit 1
+}
+
+main() {
+  local command=${1:-start}
+  shift || true
+  case $command in
+    -h*|--h*|help) usage;;
+    start) startTunnelAndProxy;;
+    *) usage "Unknown command: $command"
+  esac
+}
+
+
+#============================================================
+
+createTinyproxyConf() {
+  local file=${1}
+  local base=${file%*conf}
+cat > $file <<EOF
+User dev
+Group dev
+Port ${PORT_HTTP}
+PidFile "$base.pid"
+LogFile "$base.log"
+LogLevel Connect
+MaxClients 100
+MinSpareServers 5
+MaxSpareServers 20
+StartServers 10
+Upstream socks4 127.0.0.1:${PORT_SOCKS} "${KONG_PROD}"
+Upstream socks4 127.0.0.1:${PORT_SOCKS} "${KONG_SANDBOX}"
+EOF
+if [ -f $base.log ]; then rm $base.log; fi
+tail -F $base.log 2>/dev/null &
+CHILD_PROCESSES+=( $! )
+}
+
+
+startTunnelAndProxy() {
+  if [ -z "${VETSGOV_PRIVATE_KEY:-}" ]; then die "VETSGOV_PRIVATE_KEY not defined"; fi
+  local tinyproxyConf=/tmp/$APP_NAME.conf
+  createTinyproxyConf $tinyproxyConf
+  tinyproxy -d -c $tinyproxyConf &
+  CHILD_PROCESSES+=( $! )
+  eval $(ssh-agent -s)
+  CHILD_PROCESSES+=( ${SSH_AGENT_PID} )
+  ssh-add $(readlink -f ${VETSGOV_PRIVATE_KEY})
+  echo "============================================================"
+  echo
+  echo "HTTP proxy for Kibana started: http://localhost:${PORT_HTTP}"
+  echo "Proxy can be used inside or outside of Fresnel."
+  echo
+  echo "============================================================"
+  ssh socks -4 -D localhost:${PORT_SOCKS} -N
+  killChildProcesses
+}
+
+killChildProcesses() {
+  if [ "${#CHILD_PROCESSES[@]}" -gt 0 ]; then kill ${CHILD_PROCESSES[@]}; fi
+  CHILD_PROCESSES=()
+}
+trap killChildProcesses EXIT
+
+
+#============================================================
+
+main $@
+
