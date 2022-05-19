@@ -1,0 +1,179 @@
+#!/usr/bin/env bash
+set -euo pipefail
+if [ "${DEBUG:-false}" != "false" ]; then set -x; fi
+
+
+#
+# This script provides a mechanism to allow you to issue commands
+# from inside the Fresnel container, but execute them outside the
+# container on the host.
+#
+# Commands must be explicitly allowed, by default all command are
+# prohibited.
+#
+#
+# HOW DOES THIS WORK
+#
+# - During the Fresnel environment start up, this script is
+#   executed where it will wait to process requests
+# - The Fresnel Exchange directory will be created and used
+#   as a transfer location between the Fresnel container and
+#   and host.
+# - Commands are execute using a series of files created and
+#   and destroyed during the process.
+# - Files:
+#   - $REQUEST_DIR/requests
+#     List of Request ID, one per line.
+#   - $REQUEST_DIR/$ID.cmd
+#     Command line to be evaluated
+#   - $REQUEST_DIR/$ID.in
+#     If present, represents stdin to be piped to evaluated command
+#   - $REQUEST_DIR/$ID.out
+#     The stdout stream of the command
+#   - $REQUEST_DIR/$ID.err
+#     The stderr stream of the command
+#   - $REQUEST_DIR/$ID.status
+#     The exit status of the evaluated command
+# - Files are created in particular sequence that acts as protocol
+#   between the Fresnel environment and the host.
+#
+# SEQUENCE
+# On the host:
+# - The fresnel-command (this script) starts.
+# - $REQUEST_DIR is created.
+# - $REQUEST_DIR/requests is truncated.
+# - The fresnel-command aways an entry in $REQUEST_DIR/requests.
+# - Fresnel starts, mounting the $REQUEST_DIR.
+#
+# In Fresnel, to execute a command
+# - A request ID ($ID) is determined. This can be any unique ID.
+# - Empty stdout, stderr, and status ($ID.out, $ID.err, $ID.status)
+#   files are created.
+# - Streams for $ID.out and $ID.err stream to stdout and stderr are
+#   established and will wait for content.
+# - If stdin is used, $ID.in is created. stdin is redirected to $ID.in.
+#   The command can not be evaluated until stdin is exhausted and
+#   closed.
+# - The command is written to $IN.cmd.
+# - A monitor is established for $IN.status. The command will be
+#   considered in progress until a single line is written to the
+#   $IN.status, representing the exit status of the command on the host.
+# - The request ID is appended to the $REQUEST_DIR/request file
+#   as a signal to the fresnel-commander that the request is ready
+#   to be processed.
+#
+# On the host:
+# - A change is detected in $REQUEST_DIR/requests and request ID is read.
+# - The $ID.cmd is read and check to see if the command is allowed.
+#   - If not allowed:
+#     - $ID.err is updated with a error message
+#     - non-zero status code is recorded to $ID.status.
+#     - fresnel-command is ready to process a new command.
+# - The command is evaluated
+#   - If $ID.in is available, it's contents are redirected as stdin to
+#     the command.
+#   - stdout is redirected to $ID.out.
+#   - stderr is redirected to $ID.err.
+# - After completion, the exit status is written to $ID.status
+# - If the command does not complete in ~5 seconds
+#   - The command is killed
+#   - An error message is written to $ID.err
+#   - A non-zero status code is written to $ID.status
+#   - fresnel-command resets itself and command files
+#
+# In Fresnel
+# - The change in $ID.status is detected and read
+# - streams for $ID.out and $ID.err are closed
+# - All request files ($ID.*) are deleted
+# - Exit code in $ID.status is propagated
+#
+
+ALLOWED_COMMANDS=(
+  date
+  pbcopy
+  pbpaste
+)
+
+
+REQUEST_DIR=.fresnel-exchange
+REQUEST_FILE=$REQUEST_DIR/requests
+
+
+main() {
+  while true
+  do
+    if [ -f $REQUEST_FILE ]; then rm $REQUEST_FILE; fi
+    /usr/bin/touch $REQUEST_FILE
+    /usr/bin/find $REQUEST_DIR \
+      -depth 1 \
+      -name "*.cmd" \
+      -o -name "*.in" \
+      -o -name "*.err" \
+      -o -name "*.out" \
+      -o -name "*.status" \
+      -exec rm {} \;
+    /usr/bin/tail -F $REQUEST_FILE | while read requestId
+    do
+      local cmd=$REQUEST_DIR/$requestId.cmd
+      processRequest $requestId &
+      requestPid=$!
+      for i in {1..5}
+      do
+        if [ ! -f $cmd ]; then break; fi
+        sleep 1
+      done
+      if [ -f $cmd ]
+      then
+        local err=$REQUEST_DIR/$requestId.err
+        local status=$REQUEST_DIR/$requestId.status
+        kill $requestPid
+        echo "time out" > $err
+        echo 45 > $status
+        break
+      fi
+    done
+  done
+}
+
+
+isCommandAllowed() {
+  local command=${1:-}
+  if [ -z "${command:-}" ]; then return 1; fi
+  for allowed in ${ALLOWED_COMMANDS[@]}
+  do
+    if [ "$allowed" == "${command}" ]; then return 0; fi
+  done
+  return 1
+}
+
+processRequest() {
+  local requestId=$1
+  local cmd=$REQUEST_DIR/$requestId.cmd
+  local in=$REQUEST_DIR/$requestId.in
+  local out=$REQUEST_DIR/$requestId.out
+  local err=$REQUEST_DIR/$requestId.err
+  local status=$REQUEST_DIR/$requestId.status
+
+  local commandLine
+  commandLine=( $(cat $cmd) )
+  if [ -z "${commandLine[@]:-}" ]; then return 1; fi
+  if ! isCommandAllowed ${commandLine[0]:-}
+  then
+    echo "not allowed: ${commandLine[@]:-}" > $err
+    echo 1 > $status
+    return 1
+  fi
+
+  if [ -f $in ]
+  then
+    cat $in | $commandLine >> $out 2>> $err
+    echo $? >> $status
+    rm $in
+  else
+    $commandLine >> $out 2>> $err
+    echo $? >> $status
+  fi
+  rm $cmd
+}
+
+main
