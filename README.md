@@ -82,21 +82,17 @@ To gain access to X applications, like `kdiff3`.
 When X support is available, Fresnel provides mimics of `pbcopy` and `pbpaste` that take advantage of XQuartz clipboard support.
 
 
-## `open` Support and Fresnel Command Exchange
-To support special operations that allow certain macOs commands to be intiated from within the Docker environment, Fresnel provides a specialized exchange agent.
-While not perfect, the Fresnel Exchange Agent can allow for a more native experience.
-It works by creating a volume to transfer data.
-From within the Docker environment, certain tools can write information to the exhange volume.
-On the host, a macOs launch agent monitors the directory associated to the volume for changes.
-When a change is detected, a tools is launched process the command and record results back to the volume.
-Within the Docker, the command will await a results to be written to volume.
+## Fresnel Command Exchange
+Fresnel provides a special mechanism that allows certain macOs commands to be initiated from within the Docker environment.
+While not perfect, the Fresnel Exchange Agent can allow for a more native experience by providing support for tools like
+`open`, `pbcopy` and `pbpaste` to work.
 
-The agent must be installed separately, using [exchange-launch-agent/install](exchange-launch-agent/install)
+When the Fresnel environment is started, the `fresnel-commander` is automatically started and will process command requests.
+Within the Docker environment, `fresnel-command` can be used directly to execute command request. However, work-alike version of `pbcopy`, `pbpaste`, and `open` are provided and preferred.
+
 
 
 ## Rough Edges, Annoying Quirks, or Completely Borked Behaviors
-
-- X support twins `pbcopy` and `pbpaste` will sometimes report an error until something has grabbed focus in X at least once.
 
 - `open` cannot process all macOs open arguments, but can open individual URLs or files shared via a volume mount.
 
