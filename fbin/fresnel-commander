@@ -90,14 +90,13 @@ if [ "${DEBUG:-false}" != "false" ]; then set -x; fi
 
 ALLOWED_COMMANDS=(
   date
-  sleep
+  open
   pbcopy
   pbpaste
 )
 
 
 export REQUEST_DIR=.fresnel-exchange
-PID_FILE=$REQUEST_DIR/command.pid
 export REQUEST_FILE=$REQUEST_DIR/requests
 
 
@@ -105,7 +104,6 @@ onExit() {
   echo "Shutting down ($?)"
   killEmAll $BASHPID
   killTheDanglingTail
-  sed -i "/^${BASHPID}\$/d" $PID_FILE
 }
 trap onExit EXIT
 
@@ -187,23 +185,16 @@ killEmAll() {
 }
 
 applyHighlanderRules() {
-  if [ -f $PID_FILE ]
-  then
-    local killed
-    killed=()
-    while read theKurgan
-    do
-      echo "There can be only one"
-      killEmAll $theKurgan 'fresnel-(command|exchange)'
-      killed+=( $theKurgan )
-    done < $PID_FILE
-  fi
-  for ghost in $killed
+  echo "There can be only one"
+  for pid in \
+    $(/bin/ps -o pid,command \
+    | /usr/bin/grep -E '(bash [a-zA-Z/]*/fresnel-commander|tail -F \.fresnel-exchange/requests)' \
+    | /usr/bin/sort -n \
+    | awk '{print $1}' \
+    | grep -v $$)
   do
-    sed -i "/^${ghost}\$/d" $PID_FILE
+    killEmAll $pid
   done
-  echo $BASHPID >> $PID_FILE
-
 }
 
 killTheDanglingTail() {
@@ -241,11 +232,11 @@ processRequest() {
   then
     echo "not allowed: ${commandLine[@]:-}" > $err
     echo 1 > $status
+    rm $marker
     return 1
   fi
 
   set +e
-  set -x
   if [ -f $in ]
   then
     cat $in | ${commandLine[@]} >> $out 2>> $err
