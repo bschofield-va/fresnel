@@ -114,3 +114,20 @@ $ git commt -m .
 This environment is not and never will be as smooth and awesome as your native environment _could_ be.
 But, it is relatively fast and easy to set up and works consistently across users.
 It can also help keep your environment current to a psuedo-standard.
+
+
+## What's in the box?
+```
+fresnel-start      - Launch script to start the Fresnel environment
+fsh                - Start an interactive Fresnel session
+
+bin/               - Tools and utilities provided in the Fresnel environment
+etc/               - Configuration for the Fresnel environment
+
+fbin/              - Tools and utilities used by Fresnel directly
+compose.yaml       - The Docker Compose file that defines how Fresnel should be launched
+fresnel.Dockerfile - The Dockerfile to create Fresnel
+fresnel.env        - Environment variables that control how Fresnel starts or is used
+
+host-bin/          - Tools and utilities that can be used on the host
+```
