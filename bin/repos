@@ -3,6 +3,7 @@ set -euo pipefail
 if [ "${DEBUG:-false}" != false ]; then set -x; fi
 
 CONF_FILE=${CONF_FILE:-~/.config/repos/repos.conf}
+cd /va
 
 loadConf() {
   if [ ! -f ${CONF_FILE} ]

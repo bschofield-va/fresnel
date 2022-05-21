@@ -40,8 +40,10 @@ doSomethingWithX11() {
 }
 
 
+
 determineTimezone
 doSomethingWithX11
+fbin/fresnel-commander &
 docker compose build $@
 docker compose up -d --force-recreate
 

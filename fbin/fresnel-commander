@@ -90,51 +90,129 @@ if [ "${DEBUG:-false}" != "false" ]; then set -x; fi
 
 ALLOWED_COMMANDS=(
   date
+  sleep
   pbcopy
   pbpaste
 )
 
 
-REQUEST_DIR=.fresnel-exchange
-REQUEST_FILE=$REQUEST_DIR/requests
+export REQUEST_DIR=.fresnel-exchange
+PID_FILE=$REQUEST_DIR/command.pid
+export REQUEST_FILE=$REQUEST_DIR/requests
 
+
+onExit() {
+  echo "Shutting down ($?)"
+  killEmAll $BASHPID
+  killTheDanglingTail
+  sed -i "/^${BASHPID}\$/d" $PID_FILE
+}
+trap onExit EXIT
 
 main() {
+  echo "Starting fresnel-commander ..."
+  applyHighlanderRules
   while true
   do
     if [ -f $REQUEST_FILE ]; then rm $REQUEST_FILE; fi
     /usr/bin/touch $REQUEST_FILE
-    /usr/bin/find $REQUEST_DIR \
-      -depth 1 \
-      -name "*.cmd" \
-      -o -name "*.in" \
-      -o -name "*.err" \
-      -o -name "*.out" \
-      -o -name "*.status" \
-      -exec rm {} \;
-    /usr/bin/tail -F $REQUEST_FILE | while read requestId
+    cleanUpOldRequestFiles
+    killTheDanglingTail
+    echo "Listening ..."
+    while read requestId
     do
-      local cmd=$REQUEST_DIR/$requestId.cmd
+      echo "Request received"
+      local marker=$REQUEST_DIR/$requestId.running
+      touch $marker
       processRequest $requestId &
       requestPid=$!
+      echo "Waiting for request to complete..."
       for i in {1..5}
       do
-        if [ ! -f $cmd ]; then break; fi
+        if [ ! -f $marker ]; then break; fi
         sleep 1
       done
-      if [ -f $cmd ]
+      if [ -f $marker ]
       then
+        set -x
         local err=$REQUEST_DIR/$requestId.err
         local status=$REQUEST_DIR/$requestId.status
-        kill $requestPid
-        echo "time out" > $err
+        echo ------------------------------------------------------------
+        echo "$requestPid"
+        ps -f
+        killEmAll $requestPid
+        echo "Time out" > $err
         echo 45 > $status
+        rm $marker
+        set +x
         break
       fi
-    done
+      echo "Done"
+    done < <(/usr/bin/tail -F $REQUEST_FILE)
   done
 }
 
+
+cleanUpOldRequestFiles() {
+  echo "Cleaning up ..."
+  /usr/bin/find $REQUEST_DIR \
+    -depth 1 \
+    -name "*.cmd" \
+    -o -name "*.in" \
+    -o -name "*.err" \
+    -o -name "*.out" \
+    -o -name "*.status" \
+    -o -name "*.running" \
+    -exec rm {} \;
+}
+
+aCurseUponYourHouse() {
+  local pid=${1}
+  local filter=${2:-.*}
+  /bin/ps -o pid,ppid,command \
+    | grep -E "$filter" \
+    | /usr/bin/awk -v k=$pid '{ if ( $1 == k) printf "%s ",$1 ; if ($2 == k) printf "%s",$1 }'
+}
+
+killEmAll() {
+  local parentPid=$1
+  if [ -z "${parentPid:-}" ]; then return; fi
+  local processes
+  processes=$(aCurseUponYourHouse $parentPid )
+  if [ -n "$processes" ]
+  then
+    echo "Terminating $processes"
+    kill $processes 2> /dev/null
+  fi
+}
+
+applyHighlanderRules() {
+  if [ -f $PID_FILE ]
+  then
+    local killed
+    killed=()
+    while read theKurgan
+    do
+      echo "There can be only one"
+      killEmAll $theKurgan 'fresnel-(command|exchange)'
+      killed+=( $theKurgan )
+    done < $PID_FILE
+  fi
+  for ghost in $killed
+  do
+    sed -i "/^${ghost}\$/d" $PID_FILE
+  done
+  echo $BASHPID >> $PID_FILE
+
+}
+
+killTheDanglingTail() {
+  # tail -f doesn't process signals normally and will attach to the init
+  # process when it's parent is killed instead of dying. Modern versions
+  # of tail support --pid option so tail can kill itself, but macOs doesn't
+  # have a modern version.
+  killEmAll $(ps -o pid,command | grep "tail -F $REQUEST_FILE")
+}
 
 isCommandAllowed() {
   local command=${1:-}
@@ -148,6 +226,7 @@ isCommandAllowed() {
 
 processRequest() {
   local requestId=$1
+  local marker=$REQUEST_DIR/$requestId.running
   local cmd=$REQUEST_DIR/$requestId.cmd
   local in=$REQUEST_DIR/$requestId.in
   local out=$REQUEST_DIR/$requestId.out
@@ -156,7 +235,8 @@ processRequest() {
 
   local commandLine
   commandLine=( $(cat $cmd) )
-  if [ -z "${commandLine[@]:-}" ]; then return 1; fi
+  if [ "${#commandLine[@]}" == 0 ]; then return 1; fi
+  echo "$requestId: ${commandLine[@]:-}"
   if ! isCommandAllowed ${commandLine[0]:-}
   then
     echo "not allowed: ${commandLine[@]:-}" > $err
@@ -164,16 +244,18 @@ processRequest() {
     return 1
   fi
 
+  set +e
+  set -x
   if [ -f $in ]
   then
-    cat $in | $commandLine >> $out 2>> $err
+    cat $in | ${commandLine[@]} >> $out 2>> $err
     echo $? >> $status
     rm $in
   else
-    $commandLine >> $out 2>> $err
+    ${commandLine[@]} >> $out 2>> $err
     echo $? >> $status
   fi
-  rm $cmd
+  rm $marker
 }
 
 main
