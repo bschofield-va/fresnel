@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+set -euo pipefail
+# Requires manual entry of pin ... people are slow
+export FRESNEL_COMMAND_TIMEOUT=120
+fresnel-command bah $@

@@ -4,6 +4,8 @@ if [ "${DEBUG:-false}" != false ]; then set -x; fi
 cd $(dirname $0)
 . fresnel.env
 
+export PATH=$PATH:$FRESNEL_HOME/host-bin
+
 
 determineTimezone() {
   # Guess which timezone

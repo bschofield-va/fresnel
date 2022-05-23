@@ -90,6 +90,7 @@ if [ "${DEBUG:-false}" != "false" ]; then set -x; fi
 
 ALLOWED_COMMANDS=(
   date
+  bah
   open
   pbcopy
   pbpaste

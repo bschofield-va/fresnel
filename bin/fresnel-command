@@ -72,7 +72,7 @@ waitForStatus &
 WAIT_FOR_IT=$!
 echo $REQUEST_ID >> $REQUEST_FILE
 
-( sleep 5 ; echo "timeout $@" >&2 ; kill $WAIT_FOR_IT ) &
+( sleep ${FRESNEL_COMMAND_TIMEOUT:-10} ; echo "timeout $@" >&2 ; kill $WAIT_FOR_IT ) &
 KILL_ME+=( $! )
 
 wait $WAIT_FOR_IT
