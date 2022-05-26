@@ -126,7 +126,7 @@ main() {
       processRequest $requestId &
       requestPid=$!
       echo "Waiting for request to complete..."
-      for i in {1..5}
+      for i in {1..30}
       do
         if [ ! -f $marker ]; then break; fi
         sleep 1
