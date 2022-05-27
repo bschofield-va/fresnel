@@ -17,17 +17,29 @@ usage() {
 cat<<EOF
 $0 <command> [arguments]
 
-help me.
+Tools for working within a Booz Allen Hamilton machine.
 
 COMMANDS
 help
   Print this help and exit.
 
-some-command [-a|-b] name [name ...]
-  Do a thing.
-  -a, --amazing  Activate amazing mode.
-  -b, --bogus    Nvm. Don't be amazing.
-  alias: s
+vpn <command>
+  Control the BAH VPN.
+  alias: v
+  Commands:
+    connect
+      Connect to the VPN
+      alias: up, u, c
+    disconnect
+      Disconnect from the VPN
+      alias: down, dn, d, dis
+    status
+      Print the VPN connection status.
+      alias: st
+
+Examples:
+  $APP_NAME vpn up
+  $APP_NAME vpn dn
 
 EOF
 die "${1:-}"

@@ -14,7 +14,19 @@ secrets           Manage development secrets
 ```
 
 
-## macOs Work-alike
+## Host-bin Tools
+
+Fresnel provided tools that run on the host, but made accessible to
+containerized environment. Host-bin tools require a certain level
+of compatibility on the host, e.g. host-bin tools written for macOs
+cannot run on Windows.
+
+```
+bah               Booz Allen Hamilton related tools
+```
+
+
+## macOs Work-alike Tools
 
 Work-alike tools require special configuration. See [README.md]
 
