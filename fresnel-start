@@ -43,10 +43,6 @@ doSomethingWithX11() {
 
 
 startFresnelCommander() {
-  if [ ! -d $FRESNEL_EXCHANGE_DIR ]
-  then
-    mkdir -p $FRESNEL_EXCHANGE_DIR
-  fi
   fbin/fresnel-commander > $FRESNEL_EXCHANGE_DIR/commander.log &
 }
 

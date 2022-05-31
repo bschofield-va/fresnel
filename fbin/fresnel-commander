@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
 if [ "${DEBUG:-false}" != "false" ]; then set -x; fi
+cd $(dirname $0)/..
+. fresnel.env
+export PATH=$FRESNEL_HOME/host-bin:$PATH
 
 
 #
@@ -89,16 +92,20 @@ if [ "${DEBUG:-false}" != "false" ]; then set -x; fi
 #
 
 ALLOWED_COMMANDS=(
-  date
+  alacritty
   bah
+  date
   open
   pbcopy
   pbpaste
 )
 
+if [ ! -d $FRESNEL_EXCHANGE_DIR ]
+then
+  mkdir -p $FRESNEL_EXCHANGE_DIR
+fi
 
-export REQUEST_DIR=.fresnel-exchange
-export REQUEST_FILE=$REQUEST_DIR/requests
+export REQUEST_FILE=$FRESNEL_EXCHANGE_DIR/requests
 
 
 onExit() {
@@ -121,7 +128,7 @@ main() {
     while read requestId
     do
       echo "Request received"
-      local marker=$REQUEST_DIR/$requestId.running
+      local marker=$FRESNEL_EXCHANGE_DIR/$requestId.running
       touch $marker
       processRequest $requestId &
       requestPid=$!
@@ -134,8 +141,8 @@ main() {
       if [ -f $marker ]
       then
         set -x
-        local err=$REQUEST_DIR/$requestId.err
-        local status=$REQUEST_DIR/$requestId.status
+        local err=$FRESNEL_EXCHANGE_DIR/$requestId.err
+        local status=$FRESNEL_EXCHANGE_DIR/$requestId.status
         echo ------------------------------------------------------------
         echo "$requestPid"
         ps -f
@@ -154,7 +161,7 @@ main() {
 
 cleanUpOldRequestFiles() {
   echo "Cleaning up ..."
-  /usr/bin/find $REQUEST_DIR \
+  /usr/bin/find $FRESNEL_EXCHANGE_DIR \
     -depth 1 \
     -name "*.cmd" \
     -o -name "*.in" \
@@ -218,12 +225,12 @@ isCommandAllowed() {
 
 processRequest() {
   local requestId=$1
-  local marker=$REQUEST_DIR/$requestId.running
-  local cmd=$REQUEST_DIR/$requestId.cmd
-  local in=$REQUEST_DIR/$requestId.in
-  local out=$REQUEST_DIR/$requestId.out
-  local err=$REQUEST_DIR/$requestId.err
-  local status=$REQUEST_DIR/$requestId.status
+  local marker=$FRESNEL_EXCHANGE_DIR/$requestId.running
+  local cmd=$FRESNEL_EXCHANGE_DIR/$requestId.cmd
+  local in=$FRESNEL_EXCHANGE_DIR/$requestId.in
+  local out=$FRESNEL_EXCHANGE_DIR/$requestId.out
+  local err=$FRESNEL_EXCHANGE_DIR/$requestId.err
+  local status=$FRESNEL_EXCHANGE_DIR/$requestId.status
 
   local commandLine
   commandLine=( $(cat $cmd) )
