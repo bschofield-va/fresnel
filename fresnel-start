@@ -11,7 +11,11 @@ determineTimezone() {
   # Guess which timezone
   if [ "${FRESNEL_TIMEZONE:-automatic}" == automatic ]
   then
-    export FRESNEL_TIMEZONE=$(stat -c %N /etc/localtime | cut -d "'" -f 4 | sed 's/.*zoneinfo\///')
+    local target=$(/usr/bin/readlink /etc/localtime)
+    if [ -n "${target:-}" ]
+    then
+      export FRESNEL_TIMEZONE=$(echo $target | cut -d "'" -f 4 | sed 's/.*zoneinfo\///')
+    fi
   fi
 }
 

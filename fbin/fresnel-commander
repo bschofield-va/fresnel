@@ -110,7 +110,7 @@ export REQUEST_FILE=$FRESNEL_EXCHANGE_DIR/requests
 
 onExit() {
   echo "Shutting down ($?)"
-  killEmAll $BASHPID
+  killEmAll $$
   killTheDanglingTail
 }
 trap onExit EXIT
