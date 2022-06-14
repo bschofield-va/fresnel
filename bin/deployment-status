@@ -38,6 +38,7 @@ print [-p|-s]
     update-status
   -p, --problems  Print problems only.
   -s, --summary   Print a summary of applications withs problems.
+  --no-update     Do not update, use previously cached metadata.
   alias: p
 
 prompt
@@ -105,7 +106,6 @@ EOF
 
 #============================================================
 refreshMetadata() {
-  ensureJenkinsCredentials
   for env in ${ENVIRONMENTS[@]}
   do
     refreshMetadataInEnvironment $env &
@@ -145,6 +145,7 @@ refreshMetadataFile() {
   if isMetadataFileUsable $file; then return; fi
   local dir=$(dirname $file)
   if [ ! -d "$dir" ]; then mkdir -p $dir; fi
+  ensureJenkinsCredentials
   curl -u "${JENKINS_USERNAME_PASSWORD}" -ksfL "$url" \
     | jq -r '.[] | [ .["deployment-unit"], .["deployment-app-version"], .["deployment-unit-version"], .["deployment-test-status"], .["deployment-date"] ] | join(" ")' \
     > $file
@@ -177,6 +178,7 @@ printStatus() {
       -p|--problems) filter='problems';;
       -s|--summary) filter='summary';;
       --prompt) filter='prompt';;
+      --no-update) CACHE_EXPIRATION_TIME=0;;
       *) usage "Unknown option to print: $1";;
     esac
     shift
@@ -208,7 +210,10 @@ printStatus() {
   fi
   if [ $filter == prompt ]
   then
-    echo "${#failed[@]} failed, ${#behind[@]} behind"
+    local message
+    if [ ${#failed[@]} -ne 0 ]; then message+="${#failed[@]} failed"; fi
+    if [ ${#behind[@]} -ne 0 ]; then message+="${message:+, }${#behind[@]} behind"; fi
+    echo "${message:-ok}"
   fi
 }
 
