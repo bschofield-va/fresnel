@@ -44,6 +44,7 @@ RUN apt-get install -y -q \
   tinyproxy \
   unzip \
   vim \
+  libxml2-utils \
   zip
 
 #
