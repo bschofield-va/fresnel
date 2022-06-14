@@ -25,7 +25,7 @@ help
 help-config
   Print a documented configuration sample.
 
-print [-p|-s] [--no-update]
+list [-p|-s] [--no-update]
   Print deployment status.
   Format is one line with the following fields:
     application
@@ -39,7 +39,7 @@ print [-p|-s] [--no-update]
   -p, --problems  Print problems only.
   -s, --summary   Print a summary of applications withs problems.
   --no-update     Do not update, use previously cached metadata.
-  alias: p
+  alias: l,ls,,p,print
 
 prompt
   Print a very fast and short summary suitable for a prompt.
@@ -54,12 +54,22 @@ die() {
 }
 
 main() {
-  local command=print
-  if [ $# -gt 0 ]; then command=$1; shift; fi
+  if [ $# -eq 0 ]
+  then
+    # deployment-status
+    command=list
+  elif [[ $1 == -* ]]
+  then
+    # deployment-status --problems
+    command=list
+  else
+    # deployment-status <command> [options]
+    command=$1; shift
+  fi
   case $command in
     -h*|--h*|help) usage;;
     help-config) createSample;;
-    p|print) printStatus $@;;
+    p|print|l|ls|list) printStatus $@;;
     prompt) printPrompt;;
     *) usage "Unknown command: $command"
   esac

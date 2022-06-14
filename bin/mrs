@@ -1,0 +1,252 @@
+#!/usr/bin/env bash
+set -euo pipefail
+if [ "${DEBUG:-false}" != false ]; then set -x; fi
+
+APP_NAME=$(basename $(readlink -f $0))
+CONF_FILE=${CONF_FILE:-~/.config/$APP_NAME/$APP_NAME.conf}
+CACHE_DIR=${CACHE_DIR:-~/.config/$APP_NAME/cache}
+CACHE_EXPIRATION=${CACHE_EXPIRATION:-300}
+MR_JSON=$CACHE_DIR/mrs.json
+MR_DATA=$CACHE_DIR/mrs.dat
+DELIM=^
+mkdir -p $(dirname $MR_JSON)
+
+
+#============================================================
+usage() {
+cat<<EOF
+$0 [command] [arguments]
+
+Print MRs
+
+$APP_NAME configuration file: $CONF_FILE
+
+COMMANDS
+help
+  Print this help and exit.
+help-config
+  Print a documented configuration sample.
+
+list
+  List upcoming Maintenance Requests
+  -f, --force  Force refresh of cached PR data.
+  --no-color  Do not colorize output.
+  alias: l, ls
+
+EOF
+die "${1:-}"
+}
+
+die() {
+  echo "${1-}"
+  exit 1
+}
+
+main() {
+  if [ $# -eq 0 ]
+  then
+    # mrs
+    command=list
+  elif [[ $1 == -* ]]
+  then
+    # mrs --force
+    command=list
+  else
+    # mrs <command> [options]
+    command=$1; shift
+  fi
+  case $command in
+    -h*|--h*|help) usage;;
+    help-config) createSample;;
+    l|ls|list) listMrs $@;;
+    *) usage "Unknown command: $command"
+  esac
+}
+
+
+#============================================================
+
+loadConf() {
+  if [ ! -f ${CONF_FILE} ]
+  then
+    createSampleAndDie
+  fi
+  . $CONF_FILE
+}
+
+createSampleAndDie() {
+  mkdir -p $(dirname $CONF_FILE)
+  createSample $CONF_FILE
+  echo "I've created a template configuration for you here: $CONF_FILE"
+  exit 1
+}
+
+createSample() {
+local destination=${1:-/dev/stdout}
+cat > $destination <<EOF
+#
+# $APP_NAME Configuration
+#
+
+EOF
+}
+
+#============================================================
+
+fetchMrIssues() {
+  gh issue list \
+    --repo department-of-veterans-affairs/lighthouse-devops-support \
+    --label maintenance-request \
+    --state closed \
+    --json labels,body,title,number,url \
+    | jq -c .[] \
+    > $MR_JSON
+}
+
+isDataFileUsable() {
+  if [ ! -f $MR_DATA ]; then return 1; fi
+  local age=$(stat -c %Y $MR_DATA)
+  if [ -z "${CACHE_EXPIRATION_TIME:-}" ]
+  then
+    CACHE_EXPIRATION_TIME=$(( $(date +%s) - $CACHE_EXPIRATION ))
+  fi
+  if [ $age -le $CACHE_EXPIRATION_TIME ]; then return 1; fi
+  return 0
+}
+
+CURRENT_TZ=$(date +%Z)
+normalizeTime() {
+  local time="${1:-unknown}"
+  if [ "${time}" == "unknown" ]; then echo 0; fi
+  time=${time/ET/$CURRENT_TZ}
+  time=${time/EST/$CURRENT_TZ}
+  time=${time/EDT/$CURRENT_TZ}
+  local normalized
+  if date -d "${time}" +%s 2>/dev/null; then return; fi
+  # Sometimes people use the wrong time of year, e.g. EST during Daylight Saving
+  time=${time/DT/ST}
+  if date -d "${time}" +%s 2>/dev/null; then return; fi
+  time=${time/ST/DT}
+  if date -d "${time}" +%s 2>/dev/null; then return; fi
+  echo 0
+}
+
+titleOf() {
+  local info="${1:-}"
+  local title
+  title=$(echo "${info}" \
+    | jq -r '.title' \
+    | sed -e 's/^\(.*\) (\(.*\))/\1/' \
+    -e 's/\[MR\] //')
+  echo "$title"
+}
+
+approvedStatusOf() {
+  local info="${1:-}"
+  if [ "$(echo ${info} | jq '.labels[].name' | grep -c 'approved')" != "0" ]
+  then
+    echo approved
+    return
+  fi
+  echo pending
+}
+
+urlOf() {
+  local info="${1}"
+  echo "$info" | jq -r .url
+}
+
+summaryOf() {
+  local info="${1:-}"
+  echo "${info}" \
+    | jq -r '.body' \
+    | dos2unix \
+    | grep -iEo '^(Environment|Product|Start|End) \..*' \
+    | sed 's/\(.*\) \.* \(.*\)/\1^\2^/'
+}
+
+environmentName() {
+  local env="${1:-unknown}"
+  env="${env,,}"
+  env="${env/dvp-/}"
+  echo "${env}" | awk '{$1=$1;print}' | tr -d '.'
+}
+
+refreshMrData() {
+  if isDataFileUsable; then return; fi
+  echo "CHANGE STATE TO OPEN"
+  fetchMrIssues
+  if [ -f $MR_DATA ]; then rm $MR_DATA; fi
+  while read -r info
+  do
+    approved=$(approvedStatusOf "${info}")
+    title=$(titleOf "${info}" $approved)
+    url=$(urlOf "${info}" )
+    SAVE_IFS=$IFS
+    IFS='^'
+    env=
+    start=
+    end=
+    product=
+    while read key value
+    do
+      case "${key,,}" in
+        env*) env="${value}";;
+        *start*) start=$(normalizeTime "${value}");;
+        *end*) end=$(normalizeTime "${value}");;
+        product) product="${value}";;
+      esac
+    done < <(summaryOf "${info}")
+    IFS=$SAVE_IFS
+
+    printf "%s^%s^%s^%s^%s^%s^%s\n" \
+      "${approved:-false}" \
+      "$(date "+%m/%d %H:%M" -d @${start:-0})" \
+      "$(date "+%H:%M" -d @${end:-0})" \
+      "$(environmentName ${env:-unknown})" \
+      "${product:-unknown}" \
+      "${title:-unknown}" \
+      "${url:-unknown}" \
+      >> $MR_DATA
+
+  done < $MR_JSON
+}
+
+listMrs() {
+  local format="\e[;%sm%-7s\e[m  \e[2m%s - %s  %-15s\e[m \e[1;30m%-13s\e[m %-60s \e[2;36m%s\e[m\n"
+  local color=true
+  while [ -n "${1:-}" ]
+  do
+    case "$1" in
+      --no-color) color= ; format="%-7s  %s -%s  %-15s  %-13s %-60s  %s\n";;
+      -f|--force) CACHE_EXPIRATION=0;;
+      *) die "Unknown list option: $1";;
+    esac
+    shift
+  done
+  refreshMrData
+  local data approveColor
+  while read line
+  do
+    IFS=$DELIM
+    data=( $line )
+    unset IFS
+    approveColor=31
+    if [ "${data[0]}" == approved ]; then approveColor=32; fi
+    printf "$format" \
+      ${color:+$approveColor} \
+      "${data[0]}" \
+      "${data[1]}" \
+      "${data[2]}" \
+      "${data[3]}" \
+      "$(abbreviateProducts "${data[4]}")" \
+      "${data[5]:0:60}" \
+      "${data[6]}"
+  done < $MR_DATA
+}
+
+abbreviateProducts() {
+  echo "${1:-}" | sed -e 's/\b\([a-z]\)\([a-z]\+\)/\1/g' -e 's/-//g'
+}
+
+main $@

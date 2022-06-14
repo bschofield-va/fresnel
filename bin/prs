@@ -36,7 +36,7 @@ help-config
 list [options] (default command)
   List interesting PRs
   -f, --force  Force refresh of cached PR data.
-   --no-color  Do not colorize output.
+  --no-color  Do not colorize output.
   alias: l, ls
 
 count
