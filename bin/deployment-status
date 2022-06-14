@@ -59,7 +59,7 @@ main() {
   case $command in
     -h*|--h*|help) usage;;
     help-config) createSample;;
-    print) printStatus $@;;
+    p|print) printStatus $@;;
     prompt) printPrompt;;
     *) usage "Unknown command: $command"
   esac
@@ -92,7 +92,7 @@ cat > $destination <<EOF
 APPS=(
   charon
   data-query
-  patient-generated-data
+  patient-gen-data
   mock-mpi
   mpi-fhir-query
   cerner-fhir-query
@@ -192,12 +192,12 @@ printStatus() {
   do
     status=$(printStatusForApp $app)
     case $filter in
-      problems) echo "$status" | grep -E '(FAILED|BEHIND)' || true;;
+      problems) echo "$status" | grep -iE '(FAILED|behind)' || true;;
       summary|prompt)
         local line
         line=$(echo "$status" | oneLine FAILED || true)
         if [ -n "${line:-}" ]; then failed+=( $line ); fi
-        line=$(echo "$status" | oneLine BEHIND || true)
+        line=$(echo "$status" | oneLine behind || true)
         if [ -n "${line:-}" ]; then behind+=( $line ); fi
         ;;
       *) echo "$status";;
@@ -220,7 +220,7 @@ printStatus() {
 oneLine() {
   local key=$1
   local output=
-  output=$(grep $key \
+  output=$(grep -i $key \
     | awk '{ print $1 }' \
     | sed -e 's/\b\([a-z]\)\([a-z]\+\)/\1/g' -e 's/-//g' \
     | sort -u \
@@ -257,15 +257,15 @@ printStatusForApp() {
   do
     previous=${previousEnv[$env]}
     if [ ${appVersion[$env]} == na ]; then continue; fi
-    behind=UP_TO_DATE
-    if [ "${duVersion[$env]}" != "${duVersion[$previous]}" ]; then behind=BEHIND; fi
+    behind=up-to-date
+    if [ "${duVersion[$env]}" != "${duVersion[$previous]}" ]; then behind=behind; fi
     printf "%-22s  %-11s  %-7s  %-8s  %-16s  %s  %s\n" \
       $app \
       $env \
       ${appVersion[$env]} \
       ${duVersion[$env]} \
       "${date[$env]}" \
-      ${testStatus[$env]} \
+      ${testStatus[$env],,} \
       $behind
   done
 }
