@@ -4,12 +4,13 @@ Fresnel provided tools support help with `-h` and `--help` options.
 Consult each tool for usage details, except macOs work-alike tools.
 
 ```
+deployment-status Print deployment status for applications in the DVP environment
 dtk               Deployment Unit management
-script-template   Generate a template for a new script
 kibana-proxy      An HTTP over SOCKS proxy for API Gateway Kibana access
 prs               Print interesting GitHub Pull Requests
 repos             GitHub repository management
 run-app           Build and run Java applications
+script-template   Generate a template for a new script
 secrets           Manage development secrets
 ```
 
