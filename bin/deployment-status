@@ -25,7 +25,7 @@ help
 help-config
   Print a documented configuration sample.
 
-print [-p|-s]
+print [-p|-s] [--no-update]
   Print deployment status.
   Format is one line with the following fields:
     application
