@@ -271,7 +271,10 @@ listMrs() {
         "${data[7]}"
     fi
   done < $MR_DATA
-  if [ "$format" == prompt ]; then echo "$count mrs"; fi
+  if [ "$format" == prompt ]
+  then
+    echo "$count $( [ $count -eq 1 ] && echo mr || echo mrs )";
+  fi
 }
 
 abbreviateProducts() {
