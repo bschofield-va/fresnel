@@ -7,6 +7,7 @@ Consult each tool for usage details, except macOs work-alike tools.
 deployment-status Print deployment status for applications in the DVP environment
 dtk               Deployment Unit management
 kibana-proxy      An HTTP over SOCKS proxy for API Gateway Kibana access
+mrs               Print maintenance requests
 prs               Print interesting GitHub Pull Requests
 repos             GitHub repository management
 run-app           Build and run Java applications
