@@ -208,7 +208,7 @@ shortRepoName() {
     repo=$(echo -n "$repo" | sed 's/\b\([a-z]\)\([a-z]\+\)/\1/')
     let abbrevs-=1
   done
-  echo $repo
+  echo ${repo:0:15}
 }
 
 countPrs() {
