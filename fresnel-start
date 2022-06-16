@@ -30,7 +30,7 @@ doSomethingWithX11() {
         read -p "XQuartz is available but not running? Start it? [Y/n] " FRESNEL_AUTO_START_X
       fi
       FRESNEL_AUTO_START_X="${FRESNEL_AUTO_START_X:-y}"
-      if [ "${FRESNEL_AUTO_START_X,,}" == "y" ]
+      if [ "${FRESNEL_AUTO_START_X}" == "y" -o "${FRESNEL_AUTO_START_X}" == "Y" ]
       then
         echo "Starting XQuartz and enabling access from the localhost."
         # Running xhost will automatically start the server.

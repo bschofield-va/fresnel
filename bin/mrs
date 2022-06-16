@@ -50,6 +50,9 @@ main() {
   then
     # mrs
     command=list
+  elif [ $1 == -h -o $1 == --help ]
+  then
+    usage
   elif [[ $1 == -* ]]
   then
     # mrs --force
