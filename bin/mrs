@@ -219,7 +219,7 @@ refreshMrData() {
 
   done < $MR_JSON
 
-  sort -r -t ^ -k 2 -o $MR_DATA $MR_DATA
+  sort -t ^ -k 2 -o $MR_DATA $MR_DATA
 }
 
 #============================================================
@@ -233,12 +233,12 @@ printPrompt() {
 #============================================================
 
 listMrs() {
-  local format="\e[;%sm%-7s\e[m  \e[2m%s - %s  %-15s\e[m \e[1;30m%-13s\e[m \e[%sm%-60s\e[m \e[2;36m%s\e[m\n"
+  local format="\e[;%sm%-8s\e[m  \e[2m%s - %s  %-15s\e[m \e[1;30m%-17s\e[m \e[%sm%-60s\e[m \e[2;36m%s\e[m\n"
   local color=true
   while [ -n "${1:-}" ]
   do
     case "$1" in
-      --no-color) color= ; format="%s%-7s  %s -%s  %-15s  %-13s %s%-60s  %s\n";;
+      --no-color) color= ; format="%s%-8s  %s -%s  %-15s  %-17s %s%-60s  %s\n";;
       -f|--force) CACHE_EXPIRATION=0;;
       --prompt) format=prompt;;
       *) die "Unknown list option: $1";;
