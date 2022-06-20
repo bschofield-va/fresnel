@@ -22,6 +22,16 @@ env JAVA_HOME=/usr/lib/jvm/java-16-openjdk-arm64
 
 RUN apt-get install -y -q docker docker-compose
 
+
+#
+# Ubuntu doesn't have the latest Emacs, but Kevin Kelley does
+# https://launchpad.net/~kelleyk/+archive/ubuntu/emacs
+#
+RUN apt-get install -y -q software-properties-common \
+ && add-apt-repository ppa:kelleyk/emacs \
+ && apt update \
+ && apt-get install -y -q emacs28-nox
+
 #
 # Base tools
 #
@@ -30,7 +40,6 @@ RUN apt-get install -y -q \
   bc \
   curl \
   dos2unix \
-  emacs-nox \
   gettext-base \
   git \
   git-crypt \

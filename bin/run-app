@@ -200,7 +200,7 @@ buildQuick() {
   then
     echo " Aborting"
     echo "Try running with --rebuild instead of --build"
-    cat $log
+    cat $buildLog
     exit 1
   fi
   echo " Done"
