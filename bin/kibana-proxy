@@ -10,8 +10,8 @@ CHILD_PROCESSES=()
 
 
 TUNNEL_HOSTS=(
-  internal-dsva-vagov-dev-fwdproxy-1893365470.us-gov-west-1.elb.amazonaws.com
-  internal-dsva-vagov-dev-fwdproxy-1893365470.us-gov-west-1.elb.amazonaws.com
+  vpc-dvp-prod-kong-logs-lxxvek5z56mgfqmvkwzjeqiadi.us-gov-west-1.es.amazonaws.com
+  vpc-dvp-sandbox-kong-logs-fsmebuxacgah7i756siqpaprji.us-gov-west-1.es.amazonaws.com
   internal-dsva-vagov-dev-fwdproxy-1893365470.us-gov-west-1.elb.amazonaws.com
 )
 
