@@ -8,12 +8,23 @@ PORT_SOCKS=2001
 PORT_HTTP=2002
 CHILD_PROCESSES=()
 
-KONG_PROD=vpc-dvp-prod-kong-logs-lxxvek5z56mgfqmvkwzjeqiadi.us-gov-west-1.es.amazonaws.com
-KONG_SANDBOX=vpc-dvp-sandbox-kong-logs-fsmebuxacgah7i756siqpaprji.us-gov-west-1.es.amazonaws.com
 
-
+TUNNEL_HOSTS=(
+  internal-dsva-vagov-dev-fwdproxy-1893365470.us-gov-west-1.elb.amazonaws.com
+  internal-dsva-vagov-dev-fwdproxy-1893365470.us-gov-west-1.elb.amazonaws.com
+  internal-dsva-vagov-dev-fwdproxy-1893365470.us-gov-west-1.elb.amazonaws.com
+)
 
 #============================================================
+usageAutoproxy() {
+  local sample
+  for h in ${TUNNEL_HOSTS[@]}
+  do
+    sample+="${sample:+\n      || }"
+    sample+="shExpMatch(host, \"${h}*\")"
+  done
+  echo -e "$sample"
+}
 usage() {
 cat<<EOF
 $0 [command]
@@ -43,8 +54,7 @@ Example Autoproxy script:
 
   function FindProxyForURL(url, host) {
     proxy = "PROXY 127.0.0.1:2002"
-    if (shExpMatch(host, "${KONG_PROD}*")
-      || shExpMatch(host, "${KONG_SANDBOX}*")
+    if ($(usageAutoproxy))
     {
       return proxy;
     }
@@ -101,9 +111,11 @@ MaxClients 100
 MinSpareServers 5
 MaxSpareServers 20
 StartServers 10
-Upstream socks4 127.0.0.1:${PORT_SOCKS} "${KONG_PROD}"
-Upstream socks4 127.0.0.1:${PORT_SOCKS} "${KONG_SANDBOX}"
 EOF
+for h in ${TUNNEL_HOSTS[@]}
+do
+  echo "Upstream socks4 127.0.0.1:${PORT_SOCKS} \"$h\"" >> $file
+done
 if [ -f $base.log ]; then rm $base.log; fi
 tail -F $base.log 2>/dev/null &
 CHILD_PROCESSES+=( $! )
