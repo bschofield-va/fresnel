@@ -34,3 +34,4 @@ services:
       - $HOME/.fresnel/home:/home/dev
       - $HOME/.m2/repository:/repository
       - $HOME/va:/va
+      - $HOME/Downloads:/Downloads
