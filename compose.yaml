@@ -33,5 +33,5 @@ services:
       - $FRESNEL_EXCHANGE_DIR:/var/run/fresnel
       - $HOME/.fresnel/home:/home/dev
       - $HOME/.m2/repository:/repository
-      - $HOME/va:/va
+      - $FRESNEL_GITHUB_REPO_DIR:/va
       - $HOME/Downloads:/Downloads
