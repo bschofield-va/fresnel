@@ -26,8 +26,8 @@ fsh
 | Fresnel       |  Real World        | Why |
 |---------------|--------------------|-----|
 | `/home/dev`   | `~/.fresnel/home`  | Allow you Fresnel home to be separate from your host OS, but still be shared across sessions. |
-| `/va`         | `~/va`             | Allow source code to be shared with IDEs. |
-| `/repository` | `~/.m2/repository` | ALlow Maven repository to be shared with IDEs. |
+| `/va`         | `~/va`             | Allow source code to be shared with IDEs. See `FRESNEL_GITHUB_REPO_DIR` in `fresnel.env`.|
+| `/repository` | `~/.m2/repository` | ALlow Maven repository to be shared with IDEs. Fresnel provides tooling to generate a `settings.xml` that uses this mount. |
 
 
 ## Initialization
