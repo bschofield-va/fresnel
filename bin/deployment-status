@@ -25,7 +25,7 @@ help
 help-config
   Print a documented configuration sample.
 
-list [-p|-s] [--no-update]
+list [-a] [-p|-s] [--no-update]
   Print deployment status.
   Format is one line with the following fields:
     application
@@ -36,10 +36,12 @@ list [-p|-s] [--no-update]
     time
     test-status
     update-status
+  -a, --all       Print status of all apps, not just those listed
+                  in your configuration file.
   -p, --problems  Print problems only.
   -s, --summary   Print a summary of applications withs problems.
   --no-update     Do not update, use previously cached metadata.
-  alias: l,ls,,p,print
+  alias: l,ls,p,print
 
 prompt
   Print a very fast and short summary suitable for a prompt.
@@ -185,9 +187,11 @@ printPrompt() {
 
 printStatus() {
   local filter='none'
+  local all=false
   while [ -n "${1:-}" ]
   do
     case "$1" in
+      -a|--all) all=true;;
       -p|--problems) filter='problems';;
       -s|--summary) filter='summary';;
       --prompt) filter='prompt';;
@@ -198,6 +202,12 @@ printStatus() {
   done
   loadConf
   refreshMetadata
+
+  if [ $all == true ]
+  then
+    APPS=( $(cat $(find $CACHE_DIR -name "status.*") | awk '{print $1}' | sort -u) )
+  fi
+
   local status
   local behind=()
   local failed=()
