@@ -34,13 +34,14 @@ list [-a] [-p|-s] [--no-update]
     deployment-version
     day
     time
+    deployment-type
     test-status
     update-status
   -a, --all       Print status of all apps, not just those listed
                   in your configuration file.
   -p, --problems  Print problems only.
   -s, --summary   Print a summary of applications withs problems.
-  --no-update     Do not update, use previously cached metadata.
+  -f, --force     Force refresh of cached deployment data.
   alias: l,ls,p,print
 
 prompt
@@ -141,8 +142,8 @@ ecsMetadataFile() {
 refreshMetadataInEnvironment() {
   local env=$1
   local artifactUrl="https://tools.health.dev-developer.va.gov/jenkins/job/department-of-veterans-affairs/job/health-apis-deployer/job/${env}/lastSuccessfulBuild/artifact/"
-  refreshMetadataFile "$artifactUrl/status.us-gov-west-1a.json" $(k8sMetadataFile $env) &
-  refreshMetadataFile "$artifactUrl/status.ecs.json" $(ecsMetadataFile $env) &
+  refreshMetadataFile "$artifactUrl/status.us-gov-west-1a.json" $(k8sMetadataFile $env) k8s &
+  refreshMetadataFile "$artifactUrl/status.ecs.json" $(ecsMetadataFile $env) ecs &
   wait
 }
 
@@ -157,12 +158,13 @@ isMetadataFileUsable() {
 refreshMetadataFile() {
   local url=${1}
   local file=${2}
+  local type=${3}
   if isMetadataFileUsable $file; then return; fi
   local dir=$(dirname $file)
   if [ ! -d "$dir" ]; then mkdir -p $dir; fi
   ensureJenkinsCredentials
   curl -u "${JENKINS_USERNAME_PASSWORD}" -ksfL "$url" \
-    | jq -r '.[] | [ .["deployment-unit"], .["deployment-app-version"], .["deployment-unit-version"], .["deployment-test-status"], .["deployment-date"] ] | join(" ")' \
+    | jq -r --arg t $type '.[] | [ .["deployment-unit"], .["deployment-app-version"], .["deployment-unit-version"], .["deployment-test-status"], .["deployment-date"], $t ] | join(" ")' \
     > $file
 }
 
@@ -195,7 +197,7 @@ printStatus() {
       -p|--problems) filter='problems';;
       -s|--summary) filter='summary';;
       --prompt) filter='prompt';;
-      --no-update) CACHE_EXPIRATION_TIME=0;;
+      -f|--force) CACHE_EXPIRATION_TIME=$(date +%s)0;;
       *) usage "Unknown option to print: $1";;
     esac
     shift
@@ -258,6 +260,7 @@ printStatusForApp() {
   declare -A duVersion
   declare -A testStatus
   declare -A date
+  declare -A type
   declare -A previousEnv
   previousEnv[qa]=qa
   previousEnv[staging]=qa
@@ -267,11 +270,12 @@ printStatusForApp() {
   for env in ${ENVIRONMENTS[@]}
   do
     envStatus=( $(appStatusInEnvironment $env $app) )
-    # vista-fhir-query 2.0.188 0.0.581 PASSED 2022-06-09T1123-0400
+    # vista-fhir-query 2.0.188 0.0.581 PASSED 2022-06-09T1123-0400 ecs
     appVersion[$env]=${envStatus[1]:-na}
     duVersion[$env]=${envStatus[2]:-na}
     testStatus[$env]=${envStatus[3]:-unknown}
     date[$env]=$(normalizeDate ${envStatus[4]:-})
+    type[$env]=${envStatus[5]:-unknown}
   done
 
   local previous
@@ -282,12 +286,13 @@ printStatusForApp() {
     if [ ${appVersion[$env]} == na ]; then continue; fi
     behind=up-to-date
     if [ "${duVersion[$env]}" != "${duVersion[$previous]}" ]; then behind=behind; fi
-    printf "%-22s  %-11s  %-7s  %-8s  %-16s  %s  %s\n" \
+    printf "%-22s  %-11s  %-7s  %-8s  %-16s  %3s  %s  %s\n" \
       $app \
       $env \
       ${appVersion[$env]} \
       ${duVersion[$env]} \
       "${date[$env]}" \
+      ${type[$env]} \
       ${testStatus[$env],,} \
       $behind
   done
@@ -302,8 +307,8 @@ normalizeDate() {
 appStatusInEnvironment() {
   local env=$1
   local app=$2
-  if grep $app $(ecsMetadataFile $env); then return; fi
-  if grep $app $(k8sMetadataFile $env); then return; fi
+  if grep "$app " $(ecsMetadataFile $env); then return; fi
+  if grep "$app " $(k8sMetadataFile $env); then return; fi
 }
 
 
