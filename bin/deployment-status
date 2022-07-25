@@ -286,7 +286,7 @@ printStatusForApp() {
     if [ ${appVersion[$env]} == na ]; then continue; fi
     behind=up-to-date
     if [ "${duVersion[$env]}" != "${duVersion[$previous]}" ]; then behind=behind; fi
-    printf "%-22s  %-11s  %-7s  %-8s  %-16s  %3s  %s  %s\n" \
+    printf "%-22s  %-11s  %-7s  %-8s  %-16s  %3s  %-9s  %s\n" \
       $app \
       $env \
       ${appVersion[$env]} \
