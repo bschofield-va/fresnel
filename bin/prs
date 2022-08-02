@@ -269,7 +269,7 @@ listPrs() {
       $(prettyDate ${updated}) \
       "${title:0:40}" \
       "${url}"
-  done < <(cat $PR_NDJSON_FILE | jq -r '[.url,.number,.author.login,.updatedAt,.title]|join(" ")')
+  done < <(cat $PR_NDJSON_FILE | jq -r '[.url,.number,.author.login,.updatedAt,.title]|join(" ")') | sort
 }
 
 
