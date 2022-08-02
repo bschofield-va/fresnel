@@ -377,6 +377,8 @@ status [-b]
   alias: st
 names
   Print the names, application, and directory of all known applications
+edit
+  Edit the run-app configurations
 
 APPLICATION NAMES
 Commands that accept application names may use
@@ -420,6 +422,7 @@ main() {
     st|status) status $args;;
     l|log|logs) log $args;;
     names) names;;
+    edit) ${EDITOR:-vi} ${CONF_FILE};;
     *) usage "Unknown command: $command"
   esac
 }
