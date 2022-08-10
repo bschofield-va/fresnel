@@ -141,9 +141,10 @@ start() {
 startApp() {
   local buildMode=$1
   local n=$2
+  configureAppInCurrentDirectory $n
   local dir
   dir=${APPS[$n]:-}
-  if [ -z "$dir" ]; then die "Unknown application: $n"; fi
+  if [ -z "$dir" ]; then die "Cannot start unknown application: $n"; fi
   cd $dir
   local jar app
   app=$(appName $n)
@@ -296,6 +297,7 @@ normalizeArguments() {
     # Multiple applications specified together, e.g. vcy
     maybe=$(findIdsFromSingleWord $arg)
     if [ -n "${maybe:-}" ]; then normalized+=( $maybe ); continue; fi
+    if configureAppInCurrentDirectory $arg; then normalized+=( $arg ); continue; fi
   done
   echo "${normalized[@]}"
 }
@@ -307,6 +309,23 @@ findIdByName() {
   do
     if [ "$(appName $n)" == $name ]; then echo $n; return; fi
   done
+  if configureAppInCurrentDirectory $name
+  then
+    echo $name
+  fi
+}
+
+configureAppInCurrentDirectory() {
+  local name=$1
+  if [ -n "${APPS[$name]:-}" ]; then return 0; fi
+  local jar
+  if jar=$(find ./target/ -maxdepth 1 -name "$name-*.jar" \
+    -not -name "*-tests.jar" -not -name "*-library.jar" 2> /dev/null)
+  then
+    APPS[$name]=$(pwd)
+    return 0
+  fi
+  return 1
 }
 
 findIdsFromSingleWord() {
@@ -327,6 +346,7 @@ findIdsFromSingleWord() {
 
 appName() {
   local n=$1
+  configureAppInCurrentDirectory $n
   local dir=${APPS[$n]:-}
   if [ -z "${dir}" ]; then die "Unknown application: $n"; fi
   local name
@@ -385,6 +405,7 @@ Commands that accept application names may use
 - the long application name (e.g., vista-fhir-query)
 - the abbreviation (e.g., v)
 - multiple abbreviations specified as one arguments (e.g., vcy)
+- an application in the current directory
 
 CUSTOMIZED APPLICATION START
 If the file .run-app is present in the application directory, it will be
