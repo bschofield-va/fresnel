@@ -4,7 +4,7 @@ if [ "${DEBUG:-false}" != false ]; then set -x; fi
 
 APP_NAME=$(basename $(readlink -f $0))
 CONF_FILE=${CONF_FILE:-~/.config/$APP_NAME/$APP_NAME.conf}
-PR_NDJSON_FILE=/tmp/$APP_NAME.json
+PR_NDJSON_FILE=~/.config/$APP_NAME/prs.json
 PR_LIST_EXPIRATION=300 # seconds
 ORGANIZATION=department-of-veterans-affairs
 PR_STATE=open
@@ -172,6 +172,8 @@ savePrList() {
   searchPrs --repo $(printf "$ORGANIZATION/%s\n" ${REPOS[@]} | paste -sd,) > $resultsDir/repos.json &
   searchPrs --involves $GITHUB_USERNAME > $resultsDir/me.json &
   wait
+  local dir=$(dirname $PR_NDJSON_FILE)
+  if [ ! -d $dir ]; then mkdir -p $dir; fi
   cat $resultsDir/*.json | sort -u > $PR_NDJSON_FILE
 }
 
