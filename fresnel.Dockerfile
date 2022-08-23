@@ -57,6 +57,13 @@ RUN apt-get install -y -q \
   zip
 
 #
+# YQ
+#
+RUN add-apt-repository ppa:rmescandon/yq \
+  && apt update \
+  && apt install -y -q yq
+
+#
 # GitHub CLI, which must be after base tools
 #
 RUN apt-key adv --keyserver keyserver.ubuntu.com --recv-keys C99B11DEB97541F0 \

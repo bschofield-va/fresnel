@@ -32,6 +32,8 @@ help
   Print this help and exit.
 help-config
   Print a documented configuration sample.
+edit
+  Edit the configuration file
 
 list [options] (default command)
   List interesting PRs
@@ -80,6 +82,7 @@ main() {
   case $command in
     -h*|--h*|help) usage;;
     help-config) createSample;;
+    edit) ${EDITOR:-vi} ${CONF_FILE};;
     l|ls|list) listPrs $@;;
     count) countPrs $@;;
     refresh) refreshPrs $@;;
