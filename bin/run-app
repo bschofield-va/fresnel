@@ -98,13 +98,14 @@ statusFull() {
 
 statusOf() {
   local n=$1
-  local app pid dir branch
+  local app pid debugPort dir branch
   app=$(appName $n)
   pid=$(appPid $app)
+  debugPort=$(appDebugPort $app)
   dir=${APPS[$n]}
   cd $dir
   branch=$(git branch --show-current)
-  printf "%s %-25s %5s %s\n" $n "$app" "${pid:--}" "$branch"
+  printf "%s %-25s %5s %4s %s\n" $n "$app" "${pid:--}" "${debugPort:--}" "$branch"
 }
 
 #============================================================
@@ -126,21 +127,32 @@ start() {
   if [ $# -eq 0 ]; then usage "No application specified"; fi
   local apps=()
   local buildMode=none
+  local remoteDebug=false
+  local remoteDebugPort=8000
   while [ -n "${1:-}" ]
   do
     case $1 in
       -r|--rebuild) buildMode=full;;
       -b|--build) buildMode=quick;;
+      -d|--debug) remoteDebug=true;;
+      --debug-port) shift; remoteDebugPort=$1;;
       *) apps+=($1);;
     esac
     shift
   done
-  for n in ${apps[@]}; do startApp $buildMode $n; done
+
+  local enableRemoteDebugginOnPort
+  if [ ${remoteDebug} == true ]
+  then
+    enableRemoteDebugginOnPort=${remoteDebugPort}
+  fi
+  for n in ${apps[@]}; do startApp $buildMode "${enableRemoteDebugginOnPort:-}" $n; done
 }
 
 startApp() {
   local buildMode=$1
-  local n=$2
+  local enableRemoteDebugginOnPort="${2:-}"
+  local n=$3
   configureAppInCurrentDirectory $n
   local dir
   dir=${APPS[$n]:-}
@@ -166,12 +178,17 @@ startApp() {
   then
     export RUN_APP_NAME=$app
     export RUN_APP_JAR=$jar
+    export RUN_APP_ENABLE_REMOTE_DEBUGGING_PORT=${enableRemoteDebugginOnPort:-}
     chmod +x .run-app
     ./.run-app &>> $logFile &
-  else
-    local options="-Dapp.name=$app"
-    java ${options} -jar "$jar" &>> $logFile &
+    return
   fi
+  local options="-Dapp.name=$app"
+  if [ -n "${enableRemoteDebugginOnPort:-}" ]
+  then
+    options+=" -agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:${enableRemoteDebugginOnPort}"
+  fi
+  java ${options} -jar "$jar" &>> $logFile &
 }
 
 
@@ -356,7 +373,18 @@ appName() {
 
 appPid() {
   local app=$1
-  ps -C java -o pid,args | grep -E -- "-Dapp\.name=$app( |\$)" | awk '{print $1}' || true
+  ps -C java -o pid,args \
+    | grep -E -- "-Dapp\.name=$app( |\$)" \
+    | awk '{print $1}' \
+    || true
+}
+
+appDebugPort() {
+  local app=$1
+  ps -C java -o pid,args \
+    | grep -E -- "-Dapp\.name=$app( |\$)-agentlib:jdwp" \
+    | sed 's/.*address=.:\([0-9]\+\).*/\1/' \
+    || true
 }
 
 #============================================================
@@ -377,8 +405,11 @@ help-config
 
 start [-b|-r] name [name ...]
   Start one or more applications.
-  -b, --build    Build just the application
+  -b, --build    Build just the application.
   -r, --rebuild  Rebuild repository directory, pulling if on primary branch.
+  -d, --debug    Enable remote debugging.
+      --debug-port <number>
+                 Use remote debugging port. Default 8000.
   alias: s
 stop name [name ...]
   Stop one or more applications.
