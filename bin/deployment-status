@@ -25,6 +25,11 @@ help
 help-config
   Print a documented configuration sample.
 
+edit
+  Edit the configuration file used for generating deployment
+  statuses
+
+
 list [-a] [-p|-s] [--no-update]
   Print deployment status.
   Format is one line with the following fields:
@@ -73,6 +78,7 @@ main() {
     command=$1; shift
   fi
   case $command in
+    edit) ${EDITOR:-vi} ${CONF_FILE};;
     -h*|--h*|help) usage;;
     help-config) createSample;;
     p|print|l|ls|list) printStatus $@;;
