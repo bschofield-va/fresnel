@@ -26,6 +26,7 @@ services:
       - "8070:8070" # cerner-fhir-query
       - "8090:8090" # data-query
       - "8095:8095" # vista-fhir-query
+      - "8888:8888" # yanartas
       - "9090:9090" # mock-mpi
     volumes:
       - .:/fresnel-dev

@@ -52,7 +52,7 @@
     <profile>
       <id>gov.va.api.health</id>
       <activation>
-        <activeByDefault>true</activeByDefault>
+        <activeByDefault>false</activeByDefault>
       </activation>
       <repositories>
         <repository>
