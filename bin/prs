@@ -243,12 +243,12 @@ refreshPrs() {
 listPrs() {
   loadConf
   local pattern
-  pattern="\e[1m%-15s\e[m  \e[1;30m%3d\e[m  \e[2m%3s\e[m  \e[1;30m%2d %-7s\e[m  %-40s  \e[2;36m%s\e[m\n"
+  pattern="\e[1m%-15s\e[m  \e[1;30m%4d\e[m  \e[2m%3s\e[m  \e[1;30m%2d %-7s\e[m  %-40s  \e[2;36m%s\e[m\n"
 
   while [ -n "${1:-}" ]
   do
     case "$1" in
-      --no-color) pattern="%-15s  %3d  %3s  %2d %-7s  %-40s  %s\n";;
+      --no-color) pattern="%-15s  %4d  %3s  %2d %-7s  %-40s  %s\n";;
       -f|--force) PR_LIST_EXPIRATION=0;;
       *) die "Unknown list option: $1";;
     esac
