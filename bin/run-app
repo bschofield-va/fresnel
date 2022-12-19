@@ -5,7 +5,6 @@ if [ "${DEBUG:-false}" != false ]; then set -x; fi
 
 LOG_DIR=/tmp
 CONF_FILE=${CONF_FILE:-~/.config/run-app/apps.conf}
-PROFILE=${PROFILE:-dev}
 declare -A APPS
 
 
@@ -335,6 +334,10 @@ findIdByName() {
 configureAppInCurrentDirectory() {
   local name=$1
   if [ -n "${APPS[$name]:-}" ]; then return 0; fi
+  if [ "$name" == "app" ]
+  then
+    name=$( cd .. ; $(basename $PWD) )
+  fi
   local jar
   if jar=$(find ./target/ -maxdepth 1 -name "$name-*.jar" \
     -not -name "*-tests.jar" -not -name "*-library.jar" 2> /dev/null)
@@ -367,6 +370,11 @@ appName() {
   local dir=${APPS[$n]:-}
   if [ -z "${dir}" ]; then die "Unknown application: $n"; fi
   local name
+  # If the application directory is just 'app', then assume the name from the parent directory
+  if [[ "${dir}" == */app ]]
+  then
+    dir=${dir%*/app}
+  fi
   name=$(basename $dir|sed 's/^\(health-apis\|lighthouse\)-//')
   echo $name
 }
