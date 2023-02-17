@@ -28,6 +28,9 @@ services:
       - "8095:8095" # vista-fhir-query
       - "8888:8888" # yanartas
       - "9090:9090" # mock-mpi
+      - "9001:9001" # whatever
+      - "9002:9002" # whatever
+      - "9003:9003" # whatever
     volumes:
       - .:/fresnel-dev
       - /var/run/docker.sock:/var/run/docker.sock

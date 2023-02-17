@@ -334,7 +334,7 @@ findIdByName() {
 configureAppInCurrentDirectory() {
   local name=$1
   if [ -n "${APPS[$name]:-}" ]; then return 0; fi
-  if [ "$name" == "app" ]
+  if [ "$name" == "app" -o "$name" == "application" ]
   then
     name=$( cd .. ; $(basename $PWD) )
   fi
@@ -374,6 +374,9 @@ appName() {
   if [[ "${dir}" == */app ]]
   then
     dir=${dir%*/app}
+  elif [[ "${dir}" == */application ]]
+  then
+    dir=${dir%*/application}
   fi
   name=$(basename $dir|sed 's/^\(health-apis\|lighthouse\)-//')
   echo $name
