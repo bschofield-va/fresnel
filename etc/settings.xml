@@ -10,11 +10,6 @@
 
   <servers>
    <server>
-     <id>health-apis-releases</id>
-      <username>HEALTH_APIS_RELEASES_NEXUS_USERNAME</username>
-      <password>HEALTH_APIS_RELEASES_NEXUS_PASSWORD</password>
-   </server>
-   <server>
      <id>github</id>
      <username>GITHUB_USERNAME</username>
      <password>GITHUB_TOKEN</password>
@@ -45,25 +40,6 @@
           <snapshots>
             <enabled>false</enabled>
           </snapshots>
-        </pluginRepository>
-      </pluginRepositories>
-    </profile>
-
-    <profile>
-      <id>gov.va.api.health</id>
-      <activation>
-        <activeByDefault>false</activeByDefault>
-      </activation>
-      <repositories>
-        <repository>
-          <id>health-apis-releases</id>
-          <url>https://tools.health.dev-developer.va.gov/nexus/repository/health-apis-releases/</url>
-        </repository>
-      </repositories>
-      <pluginRepositories>
-        <pluginRepository>
-          <id>health-apis-releases</id>
-          <url>https://tools.health.dev-developer.va.gov/nexus/repository/health-apis-releases/</url>
         </pluginRepository>
       </pluginRepositories>
     </profile>
