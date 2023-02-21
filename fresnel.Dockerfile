@@ -6,19 +6,21 @@
 #   - released 2022-04-22
 #   - JDK 16 packages not available
 #
-FROM arm64v8/ubuntu:focal
+FROM arm64v8/ubuntu:jammy
 
-RUN apt-get update -y -q
+RUN apt-get update -y -q \
+  && apt-get install -y -q software-properties-common ca-certificates
 RUN yes | unminimize
 
 #
 # Heavy downloads
 #
-
-RUN apt search openjdk-16
-
-RUN apt-get install -y -q openjdk-16-jdk-headless
-env JAVA_HOME=/usr/lib/jvm/java-16-openjdk-arm64
+RUN apt-get install -y gnupg curl
+RUN curl -kv https://apt.corretto.aws/corretto.key -o /tmp/corretto.key \
+  && apt-key add /tmp/corretto.key \
+  && add-apt-repository -S 'deb https://apt.corretto.aws stable main' \
+  && apt-get update -y -q \
+  && apt-get install -y java-17-amazon-corretto-jdk
 
 RUN apt-get install -y -q docker docker-compose
 
@@ -27,9 +29,8 @@ RUN apt-get install -y -q docker docker-compose
 # Ubuntu doesn't have the latest Emacs, but Kevin Kelley does
 # https://launchpad.net/~kelleyk/+archive/ubuntu/emacs
 #
-RUN apt-get install -y -q software-properties-common \
- && add-apt-repository ppa:kelleyk/emacs \
- && apt update \
+RUN add-apt-repository -P ppa:kelleyk/emacs \
+ && apt update -y -q \
  && apt-get install -y -q emacs28-nox
 
 #
@@ -141,7 +142,7 @@ env PATH=$FRESNEL_HOME/bin:$PATH
 COPY etc/ $FRESNEL_HOME/etc
 COPY bin/ $FRESNEL_HOME/bin
 RUN ln -s $FRESNEL_HOME/bin/open $FRESNEL_HOME/bin/xdg-open \
- && ln -s $FRESNEL_HOME/etc/profile.d/check-docker-sock.sh /etc/profile.d/
+ && find $FRESNEL_HOME/etc/profile.d/ -type f -exec ln -s {} /etc/profile.d/ \;
 
 
 CMD exec /bin/bash -c "echo ok; trap : TERM INT; sleep infinity & wait"

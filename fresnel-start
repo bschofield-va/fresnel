@@ -54,6 +54,7 @@ startFresnelCommander() {
 determineTimezone
 doSomethingWithX11
 startFresnelCommander
+set -x
 docker compose build $@
-docker compose up -d --force-recreate
+docker compose up --detach --force-recreate
 

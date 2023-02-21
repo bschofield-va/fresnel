@@ -116,7 +116,7 @@ onExit() {
 trap onExit EXIT
 
 main() {
-  echo "Starting fresnel-commander ..."
+  echo "Starting fresnel-commander $$..."
   applyHighlanderRules
   while true
   do
@@ -127,20 +127,20 @@ main() {
     echo "Listening ..."
     while read requestId
     do
+      local start=$(date +%s) 
       echo "Request received"
       local marker=$FRESNEL_EXCHANGE_DIR/$requestId.running
       touch $marker
       processRequest $requestId &
       requestPid=$!
       echo "Waiting for request to complete..."
-      for i in {1..30}
+      for i in {1..300}
       do
         if [ ! -f $marker ]; then break; fi
-        sleep 1
+        sleep 0.1
       done
       if [ -f $marker ]
       then
-        set -x
         local err=$FRESNEL_EXCHANGE_DIR/$requestId.err
         local status=$FRESNEL_EXCHANGE_DIR/$requestId.status
         echo ------------------------------------------------------------
@@ -150,10 +150,9 @@ main() {
         echo "Time out" > $err
         echo 45 > $status
         rm $marker
-        set +x
         break
       fi
-      echo "Done"
+      echo "Done ($(($(date +%s) - $start ))s)"
     done < <(/usr/bin/tail -F $REQUEST_FILE)
   done
 }
@@ -175,9 +174,9 @@ cleanUpOldRequestFiles() {
 aCurseUponYourHouse() {
   local pid=${1}
   local filter=${2:-.*}
-  /bin/ps -o pid,ppid,command \
+  /bin/ps -u $USER -o pid,ppid,command \
     | grep -E "$filter" \
-    | /usr/bin/awk -v k=$pid '{ if ( $1 == k) printf "%s ",$1 ; if ($2 == k) printf "%s",$1 }'
+    | /usr/bin/awk -v k=$pid '{ if ( $1 == k) printf "%s ",$1 ; if ($2 == k) printf "%s ",$1 }'
 }
 
 killEmAll() {
@@ -194,13 +193,15 @@ killEmAll() {
 
 applyHighlanderRules() {
   echo "There can be only one"
+
   for pid in \
-    $(/bin/ps -o pid,command \
+    $(/bin/ps -u $USER -o pid,command \
     | /usr/bin/grep -E '(bash [a-zA-Z/]*/fresnel-commander|tail -F \.fresnel-exchange/requests)' \
     | /usr/bin/sort -n \
     | awk '{print $1}' \
     | grep -v $$)
   do
+    echo " .... $pid"
     killEmAll $pid
   done
 }
@@ -232,6 +233,7 @@ processRequest() {
   local err=$FRESNEL_EXCHANGE_DIR/$requestId.err
   local status=$FRESNEL_EXCHANGE_DIR/$requestId.status
 
+
   local commandLine
   commandLine=( $(cat $cmd) )
   if [ "${#commandLine[@]}" == 0 ]; then return 1; fi
@@ -254,7 +256,8 @@ processRequest() {
     ${commandLine[@]} >> $out 2>> $err
     echo $? >> $status
   fi
+
   rm $marker
 }
 
-main
+main | sed "s/^/$$ /"
