@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
+if [ "${DEBUG:-false}" != false ]; then set -x; fi
 
 LOCAL_DOCKER_OCTOPUS=/va/health-apis-docker-octopus
 
@@ -18,11 +19,17 @@ if available at $LOCAL_DOCKER_OCTOPUS. Otherwise,
 'gh' will be used to retrieve it. You must be logged with 'gh'.
 Downloaded versions of ryan-secrets will be reused for one day.
 
+Git Secrets
+$a will attempt to install Git Secrets when executed. Git Secrets
+will be configured to prevent accidental commiting of decrypted
+files. You can disable this by setting the environment variable:
+  ENABLE_GIT_SECRETS=false
+
 COMMANDS
 help
   Print this help and exit.
 
-encrypy
+encrypt
   Encrypt all .conf and .testvars files in the directory of contents.
   alias: e
 decrypt
@@ -34,6 +41,14 @@ toggle (default command)
 diff
   Compare the files in this directory with decrypted versions on the
   default branch, e.g. master or main.
+install [options]
+  Install and configure Git Secrets (https://github.com/awslabs/git-secrets)
+  -i, --install <mode>  How Git Secrets should be installed
+    Modes:
+    sudu (default) - Install using sudo privileges
+    true, yes, nosudo - Install without sudo privileges
+    false, no - Do not install
+  alias: i
 
 EOF
 die "${1:-}"
@@ -42,6 +57,12 @@ die "${1:-}"
 die() {
   echo "${1-}"
   exit 1
+}
+
+dieIfMissingValue() {
+  local param=$1
+  local value="${2:-}"
+  if [ -z "${value:-}" ]; then die "Missing value for $param"; fi
 }
 
 main() {
@@ -58,6 +79,7 @@ main() {
     e|encrypt) execRyanSecrets encrypt-all $@;;
     t|toggle) toggleFiles $@;;
     diff) diffDu;;
+    i|install) configureGitSecrets $@;;
     *) usage "Unknown command: $command"
   esac
 }
@@ -75,7 +97,6 @@ checkDu() {
   if [ ! -d "$dir" ]; then usage "Directory not found: $dir"; fi
   if [ ! -f "$dir/qa.conf" ]; then usage "Missing qa.conf: $dir"; fi
 }
-
 
 findRyanSecrets() {
   local ryanSecretsPath=deploy-tools/deployer/ryan-secrets
@@ -112,6 +133,7 @@ execRyanSecrets() {
   checkDu "$dir"
   checkPassphrase
   findRyanSecrets
+  if [ "${ENABLE_GIT_SECRETS:-true}" != "false" ]; then configureGitSecrets; fi
   $RYAN_SECRETS $action \
     --encryption-passphrase "$DU_ENCRYPTION_KEY" \
     --directory $dir \
@@ -165,6 +187,45 @@ diffDu() {
     echo "+++ b/yours/$f"
     cat $master/diff.out
   done
+}
+
+#============================================================
+
+installGitSecrets() {
+  local sudo="${1:-}"
+  local githubRepo=https://github.com/awslabs/git-secrets.git
+  local dir=$(mktemp -d)
+  trap "rm -rf $dir" EXIT
+  echo "Installing Git Secrets"
+  git clone $githubRepo $dir
+  ( set -x ; cd $dir ; ${sudo:-} make install )
+}
+
+configureGitSecrets() {
+  local install=sudo
+  while [ -n "${1:-}" ]
+  do
+    case "$1" in
+      -i|--install) shift; dieIfMissingValue "--install" "${1:-}"; install="${1,,}";;
+      *) usage "Unknown option: $1";;
+    esac
+    shift
+  done
+  if ! git help -a | grep -q -E '^ +secrets$'
+  then
+    echo -e "git secrets is not installed\nSee https://github.com/awslabs/git-secrets"
+    case "${install:-false}" in
+      true|yes|nosudo) installGitSecrets;;
+      sudo) installGitSecrets "sudo";;
+      false|no) exit 1;;
+      *) usage "Unknown value for --install: $install";;
+    esac
+  fi
+  git secrets --install --force > /dev/null
+  git secrets --register-aws
+  # Prevent files decrypted by ryan-secrets from being committed
+  # If re-adding, this command will exit with status 1
+  git secrets --add --literal '#decrypted' || true
 }
 
 #============================================================

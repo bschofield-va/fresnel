@@ -48,6 +48,7 @@ RUN apt-get install -y -q \
   jq \
   less \
   openssl \
+  make \
   man-db \
   sudo \
   tmux \

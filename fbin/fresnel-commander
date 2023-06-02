@@ -182,26 +182,25 @@ aCurseUponYourHouse() {
 killEmAll() {
   local parentPid=$1
   if [ -z "${parentPid:-}" ]; then return; fi
+  echo "Killing $parentPid ..."
   local processes
   processes=$(aCurseUponYourHouse $parentPid )
   if [ -n "$processes" ]
   then
     echo "Terminating $processes"
-    kill $processes 2> /dev/null
+    kill -9 $processes 2> /dev/null
   fi
 }
 
 applyHighlanderRules() {
   echo "There can be only one"
-
   for pid in \
-    $(/bin/ps -u $USER -o pid,command \
+    $(/bin/ps -u $USER -o pid,ppid,command \
     | /usr/bin/grep -E '(bash [a-zA-Z/]*/fresnel-commander|tail -F \.fresnel-exchange/requests)' \
     | /usr/bin/sort -n \
-    | awk '{print $1}' \
-    | grep -v $$)
+    | grep -v $$ \
+    | awk '{print $1}')
   do
-    echo " .... $pid"
     killEmAll $pid
   done
 }

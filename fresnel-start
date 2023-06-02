@@ -47,14 +47,14 @@ doSomethingWithX11() {
 
 
 startFresnelCommander() {
-  fbin/fresnel-commander > $FRESNEL_EXCHANGE_DIR/commander.log &
+  nohup fbin/fresnel-commander & 
+  # > $FRESNEL_EXCHANGE_DIR/commander.log 2>&1 &
 }
 
 
 determineTimezone
 doSomethingWithX11
 startFresnelCommander
-set -x
 docker compose build $@
 docker compose up --detach --force-recreate
 
