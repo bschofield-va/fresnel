@@ -53,6 +53,7 @@ RUN apt-get install -y -q \
   sudo \
   tmux \
   tinyproxy \
+  tzdata \
   unzip \
   vim \
   libxml2-utils \
