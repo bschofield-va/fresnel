@@ -6,7 +6,7 @@
 #   - released 2022-04-22
 #   - JDK 16 packages not available
 #
-FROM arm64v8/ubuntu:focal
+FROM arm64v8/ubuntu:jammy
 
 RUN apt-get update -y -q
 RUN yes | unminimize
@@ -15,10 +15,14 @@ RUN yes | unminimize
 # Heavy downloads
 #
 
-RUN apt search openjdk-16
+#RUN apt search openjdk-17
 
-RUN apt-get install -y -q openjdk-16-jdk-headless
-env JAVA_HOME=/usr/lib/jvm/java-16-openjdk-arm64
+#RUN apt-get install -y -q openjdk-17-jdk-headless
+#env JAVA_HOME=/usr/lib/jvm/java-17-openjdk-arm64
+
+#RUN curl -O https://corretto.aws/downloads/latest/amazon-corretto-18-x64-linux-jdk.deb \
+#  && dpkg -i amazon-corretto-18-x64-linux-jdk.deb \
+#  && java --version
 
 RUN apt-get install -y -q docker docker-compose
 
@@ -27,10 +31,12 @@ RUN apt-get install -y -q docker docker-compose
 # Ubuntu doesn't have the latest Emacs, but Kevin Kelley does
 # https://launchpad.net/~kelleyk/+archive/ubuntu/emacs
 #
-RUN apt-get install -y -q software-properties-common \
- && add-apt-repository ppa:kelleyk/emacs \
- && apt update \
- && apt-get install -y -q emacs28-nox
+#RUN apt-get install -y -q software-properties-common \
+# && add-apt-repository ppa:kelleyk/emacs \
+# && apt update \
+# && apt-get install -y -q emacs28-nox
+
+RUN apt-get install -y -q emacs
 
 #
 # Base tools
@@ -54,14 +60,27 @@ RUN apt-get install -y -q \
   unzip \
   vim \
   libxml2-utils \
-  zip
+  zip wget
+
+RUN apt-get install -y -q java-common \
+  && wget --no-check-certificate https://corretto.aws/downloads/latest/amazon-corretto-17-aarch64-linux-jdk.deb \
+  && dpkg -i amazon-corretto-17-aarch64-linux-jdk.deb \
+  && java --version
 
 #
 # YQ
 #
-RUN add-apt-repository ppa:rmescandon/yq \
-  && apt update \
-  && apt install -y -q yq
+#RUN add-apt-repository ppa:rmescandon/yq \
+#  && apt update \
+#  && apt install -y -q yq
+RUN wget https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64 -O /usr/bin/yq \
+  && chmod +x /usr/bin/yq
+
+
+#
+# XQ
+#
+#RUN curl -k -sSL https://bit.ly/install-xq | bash
 
 #
 # GitHub CLI, which must be after base tools
