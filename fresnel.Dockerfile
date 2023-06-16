@@ -12,11 +12,22 @@ RUN apt-get update -y -q \
   && apt-get install -y -q software-properties-common ca-certificates
 RUN yes | unminimize
 
+COPY <<EOF /bin/z-failer-strikes-again
+#!/usr/bin/env bash
+echo "Acquire::https::\$1::Verify-Peer \"false\";" > /etc/apt/apt.conf.d/\$1.conf
+echo "Acquire::https::\$1::Verify-Host \"false\";" >> /etc/apt/apt.conf.d/\$1.conf
+echo "Created /etc/apt/apt.conf.d/\$1.conf"
+cat /etc/apt/apt.conf.d/\$1.conf
+EOF
+ 
+RUN chmod +x /bin/z-failer-strikes-again
+
 #
 # Heavy downloads
 #
 RUN apt-get install -y gnupg curl
 RUN curl -kv https://apt.corretto.aws/corretto.key -o /tmp/corretto.key \
+  && z-failer-strikes-again apt.corretto.aws \
   && apt-key add /tmp/corretto.key \
   && add-apt-repository -S 'deb https://apt.corretto.aws stable main' \
   && apt-get update -y -q \
@@ -29,7 +40,8 @@ RUN apt-get install -y -q docker docker-compose
 # Ubuntu doesn't have the latest Emacs, but Kevin Kelley does
 # https://launchpad.net/~kelleyk/+archive/ubuntu/emacs
 #
-RUN add-apt-repository -P ppa:kelleyk/emacs \
+RUN z-failer-strikes-again ppa.launchpadcontent.net \
+ && add-apt-repository -P ppa:kelleyk/emacs \
  && apt update -y -q \
  && apt-get install -y -q emacs28-nox
 
@@ -53,11 +65,19 @@ RUN apt-get install -y -q \
   sudo \
   tmux \
   tinyproxy \
-  tzdata \
   unzip \
   vim \
   libxml2-utils \
   zip
+
+
+#
+# Timezone
+#
+ARG FRESNEL_TIMEZONE
+RUN if [ -n "$FRESNEL_TIMEZONE" ]; then ln -sf /usr/share/zoneinfo/$FRESNEL_TIMEZONE /etc/localtime; fi
+RUN DEBIAN_FRONTEND=noninteractive apt-get install -y tzdata
+
 
 #
 # YQ
@@ -102,13 +122,6 @@ RUN if [ -z "$FRESNEL_USER_ID" ]; then echo "FRESNEL_USER_ID is not defined"; ex
   && echo "dev\ndev" | passwd dev \
   && usermod -aG sudo,docker dev \
   && echo 'dev ALL=(ALL) NOPASSWD: ALL' >> /etc/sudoers
-
-
-#
-# Timezone
-#
-ARG FRESNEL_TIMEZONE
-RUN if [ -n "$FRESNEL_TIMEZONE" ]; then ln -sf /usr/share/zoneinfo/$FRESNEL_TIMEZONE /etc/localtime; fi
 
 
 #
