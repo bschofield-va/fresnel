@@ -8,8 +8,9 @@
 #
 FROM arm64v8/ubuntu:jammy
 
-RUN apt-get update -y -q \
-  && apt-get install -y -q software-properties-common ca-certificates
+RUN apt-get update -y -q
+RUN apt-get install -y -q software-properties-common
+RUN apt-get install -y -q ca-certificates
 RUN yes | unminimize
 
 COPY <<EOF /bin/z-failer-strikes-again
@@ -19,7 +20,7 @@ echo "Acquire::https::\$1::Verify-Host \"false\";" >> /etc/apt/apt.conf.d/\$1.co
 echo "Created /etc/apt/apt.conf.d/\$1.conf"
 cat /etc/apt/apt.conf.d/\$1.conf
 EOF
- 
+
 RUN chmod +x /bin/z-failer-strikes-again
 
 #

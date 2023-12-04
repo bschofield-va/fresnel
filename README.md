@@ -65,6 +65,10 @@ Initialization variables
 - `GITHUB_TOKEN` - GitHub access token to use for accessing GitHub packages
 
 
+### `init-talisman`
+
+Install [Talisman](https://github.com/thoughtworks/talisman) and search `/va` for repositories.
+
 
 ## Performance
 Performance is significantly improved by enabling Docker Desktop experimental features:

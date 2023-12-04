@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+installTalisman() {
+  #
+  # Talisman doesn't understand Aarch64
+  # https://github.com/thoughtworks/talisman/issues/438
+  #
+  SEARCH_ROOT=/va \
+    bash -c "$(curl --silent https://thoughtworks.github.io/talisman/scripts/install.bash | sed 's/"arm64")/"arm64" | "aarch64")/')"
+}
+
+installTalisman
