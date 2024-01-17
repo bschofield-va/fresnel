@@ -35,7 +35,10 @@ RUN curl -kv https://apt.corretto.aws/corretto.key -o /tmp/corretto.key \
   && apt-get install -y java-17-amazon-corretto-jdk
 
 RUN apt-get install -y -q docker docker-compose
-
+RUN <<EOF
+curl -sL -o /usr/local/bin/kubectl "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/arm64/kubectl"
+chmod +x /usr/local/bin/kubectl
+EOF
 
 #
 # Ubuntu doesn't have the latest Emacs, but Kevin Kelley does
@@ -63,6 +66,7 @@ RUN apt-get install -y -q \
   openssl \
   make \
   man-db \
+  ncal \
   sudo \
   tmux \
   tinyproxy \
