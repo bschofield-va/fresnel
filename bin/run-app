@@ -104,7 +104,7 @@ statusOf() {
   dir=${APPS[$n]}
   cd $dir
   branch=$(git branch --show-current)
-  printf "%s %-25s %5s %4s %s\n" $n "$app" "${pid:--}" "${debugPort:--}" "$branch"
+  printf "%s %-26s %5s %4s %s\n" $n "$app" "${pid:--}" "${debugPort:--}" "$branch"
 }
 
 #============================================================
