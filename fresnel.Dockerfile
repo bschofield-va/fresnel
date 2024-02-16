@@ -164,6 +164,9 @@ COPY bin/ $FRESNEL_HOME/bin
 RUN ln -s $FRESNEL_HOME/bin/open $FRESNEL_HOME/bin/xdg-open \
  && find $FRESNEL_HOME/etc/profile.d/ -type f -exec ln -s {} /etc/profile.d/ \;
 
+#
+# SSH support, but sshd is not started by default.
+#
 RUN <<EOF
   apt-get install -y openssh-server
   mkdir /var/run/sshd
@@ -171,7 +174,6 @@ RUN <<EOF
   rm /etc/update-motd.d/10-help-text
   sed -i 's/Welcome to /Welcome to Fresnel: /' /etc/update-motd.d/00-header
 EOF
+# CMD exec /bin/bash -xc "sudo /usr/sbin/sshd -D"
 
-CMD exec /bin/bash -xc "sudo /usr/sbin/sshd -D"
-
-# CMD exec /bin/bash -c "echo ok; trap : TERM INT; sleep infinity & wait"
+CMD exec /bin/bash -c "echo ok; trap : TERM INT; sleep infinity & wait"
