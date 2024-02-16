@@ -19,6 +19,7 @@ services:
       - DISPLAY=host.docker.internal:0
     privileged: true
     ports:
+      - "2222:22"   # SSH
       - "2002:2002" # HTTP proxy over socks tunnel
       - "8000:8000" # Remote debugging
       - "8040:8040" # mpi-fhir-query
