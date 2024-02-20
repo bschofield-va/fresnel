@@ -40,6 +40,9 @@ curl -sL -o /usr/local/bin/kubectl "https://dl.k8s.io/release/$(curl -L -s https
 chmod +x /usr/local/bin/kubectl
 EOF
 
+# Install talisman
+RUN bash -c "$(curl --silent https://raw.githubusercontent.com/thoughtworks/talisman/main/install.sh)"
+
 #
 # Ubuntu doesn't have the latest Emacs, but Kevin Kelley does
 # https://launchpad.net/~kelleyk/+archive/ubuntu/emacs
