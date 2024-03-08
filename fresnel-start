@@ -95,13 +95,16 @@ Host fresnel f
   IdentityFile ~/.ssh/id_dev_fresnel_rsa
 # fresnel-autoconfig-end 
 EOF
-  echo "You ssh into Fresnel using:"
+  echo "You can ssh into Fresnel using:"
   echo "ssh fresnel"
 }
 
-
-generateSshKeys
-updateSshConfig
+#
+# ssh support is expiremental and requires additional logic in the Dockerfile to be enabled 
+#
+#generateSshKeys
+#updateSshConfig
+#
 determineTimezone
 doSomethingWithX11
 startFresnelCommander

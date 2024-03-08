@@ -135,7 +135,7 @@ RUN if [ -z "$FRESNEL_USER_ID" ]; then echo "FRESNEL_USER_ID is not defined"; ex
 #
 # Maven
 #
-ARG MVN_VERSION=3.8.5
+ARG MVN_VERSION=3.9.6
 RUN curl -sL \
      http://archive.apache.org/dist/maven/maven-3/$MVN_VERSION/binaries/apache-maven-$MVN_VERSION-bin.tar.gz \
      | tar -xz -C /opt \
