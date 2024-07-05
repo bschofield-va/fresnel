@@ -44,7 +44,7 @@ main() {
     shift
   done
   if [ ${#args[@]} -eq 0 ]; then usage "No arguments specified"; fi
-  fresnel-command open ${args[@]}
+  fresnel-host-command open ${args[@]}
 }
 
 

@@ -1,0 +1,83 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+HOST_MACHINE=host.docker.internal
+APPLICATION_NAME=$0
+
+usage() {
+cat<<EOF
+$0 [--init|--help]
+$0 command [args...]
+
+Execute a command on the Fresnel host machine.
+Initializatin is required before use.
+
+From Fresnel
+- $0 --init
+
+$0 open http://google.com
+
+EOF
+exit 1
+}
+
+initialize() {
+  local key=$1
+  echo "Using key $key"
+  createKey $key
+  copyKey $key
+  updateSshConfig $key
+  exit
+}
+
+createKey() {
+  local key=$1
+  if [ -f $key ]; then return; fi
+  echo "Creating key ..."
+  set -x
+  ssh-keygen -t rsa -N "" -f $key
+}
+
+copyKey() {
+  local key=$1
+  echo "Copying key $key for $HOST_USER"
+  ssh-copy-id -i $key $HOST_USER@$HOST_MACHINE
+}
+
+updateSshConfig() {
+  local key=$1
+  local sshConfig=$HOME/.ssh/config
+  if [ ! -f $sshConfig ]; then touch $sshConfig; fi
+sed -i -e '/fresnel-host-command-start/,/fresnel-host-command-end/d' $sshConfig
+cat >> $sshConfig <<EOF
+# fresnel-host-command-start
+# Content between markers is automatically managed by Fresnel
+Host fresnel-host
+  Hostname $HOST_MACHINE
+  Port 22022
+  User $HOST_USER
+  IdentityFile $key
+# fresnel-host-command-end
+EOF
+  echo "You can ssh into Fresnel host using:"
+  echo "ssh fresnel-host"
+}
+
+initialized() {
+  local key=$1
+  if [ ! -f $key ]; then return 1; fi
+  local sshConfig=$HOME/.ssh/config
+  if ! grep -q -F "Host fresnel-host" $sshConfig; then return 1; fi
+}
+
+main() {
+  local key=$HOME/.ssh/id_fresnel_host_rsa
+  case ${1:---help} in
+    --init) initialize $key;;
+    -h|--help) usage;;
+  esac
+  if ! initialized $key; then echo "Initialization required. Run $APPLICATION_NAME --init" >> /dev/stderr; exit 1; fi
+  ssh fresnel-host $@
+}
+
+main $@

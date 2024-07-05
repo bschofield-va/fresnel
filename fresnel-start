@@ -4,9 +4,6 @@ if [ "${DEBUG:-false}" != false ]; then set -x; fi
 cd $(dirname $0)
 . fresnel.env
 
-export PATH=$PATH:$FRESNEL_HOME/host-bin
-
-
 determineTimezone() {
   # Guess which timezone
   if [ "${FRESNEL_TIMEZONE:-automatic}" == automatic ]
@@ -18,7 +15,6 @@ determineTimezone() {
     fi
   fi
 }
-
 
 doSomethingWithX11() {
   if /usr/bin/which xhost > /dev/null 2>&1
@@ -46,68 +42,15 @@ doSomethingWithX11() {
 }
 
 
-startFresnelCommander() {
-  nohup fbin/fresnel-commander & 
-  # > $FRESNEL_EXCHANGE_DIR/commander.log 2>&1 &
+startFresnelSshd() {
+  echo "Starting Fresnel sshd"
+  ./fresnel-host/bin/fresnel-sshd
 }
 
-generateSshKeys() {
-  #
-  # Generate dev keys unless they already exist
-  #
-  local key=$HOME/.ssh/id_dev_fresnel_rsa
-  if [ ! -f $key ]
-  then
-    echo "generating $key"
-    ssh-keygen -t rsa -N "" $key
-  fi
-  #
-  # Add the newly generated public key to 'dev' users authorized keys in what will ultimately be 
-  # inside of fresnel's ~dev/.ssh/authorized_keys. This is equivalent to running:
-  # ssh-copy-id -i $HOME/.ssh/id_dev_fresnel_rsa.pub -f -p 2222 dev@localhost
-  #
-  local realDevHome=$HOME/.fresnel/home
-  local authorizedKeys=$realDevHome/.ssh/authorized_keys
-  if [ ! -d $(dirname $authorizedKeys) ]; then mkdir -p $(dirname $authorizedKeys); fi
-  ( cat $key ; cat $authorizedKeys ) | sort -u > $authorizedKeys.tmp
-  cp $authorizedKeys.tmp $authorizedKeys
-  #
-  # Make sure ssh won't complain about the new fresnel generated host keys
-  #
-  if [ -f $HOME/.ssh/known_hosts ]
-  then
-    echo "Cleaning up your previous fresnel known host keys"
-    sed -i -e '/\[localhost\]:2222/d' "$HOME/.ssh/known_hosts"
-  fi
-}
-
-updateSshConfig() {
-  local sshConfig=$HOME/.ssh/config
-  if [ ! -f $sshConfig ]; then touch $sshConfig; fi
-sed -i -e '/fresnel-autoconfig-start/,/fresnel-autoconfig-end/d' $sshConfig
-cat >> $sshConfig <<EOF
-# fresnel-autoconfig-start
-# Content between markers is automatically managed by Fresnel
-Host fresnel f
-  Hostname localhost  
-  Port 2222
-  User dev
-  IdentityFile ~/.ssh/id_dev_fresnel_rsa
-# fresnel-autoconfig-end 
-EOF
-  echo "You can ssh into Fresnel using:"
-  echo "ssh fresnel"
-}
-
-#
-# ssh support is expiremental and requires additional logic in the Dockerfile to be enabled 
-#
-#generateSshKeys
-#updateSshConfig
-#
 determineTimezone
 doSomethingWithX11
-startFresnelCommander
+startFresnelSshd
+
 docker compose build $@
 docker compose up --detach --force-recreate
 

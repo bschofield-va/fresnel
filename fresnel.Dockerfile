@@ -170,13 +170,13 @@ RUN ln -s $FRESNEL_HOME/bin/open $FRESNEL_HOME/bin/xdg-open \
 #
 # SSH support, but sshd is not started by default.
 #
-RUN <<EOF
-  apt-get install -y openssh-server
-  mkdir /var/run/sshd
-  sed -i 's/AcceptEnv .*/AcceptEnv no/' /etc/ssh/sshd_config
-  rm /etc/update-motd.d/10-help-text
-  sed -i 's/Welcome to /Welcome to Fresnel: /' /etc/update-motd.d/00-header
-EOF
+#RUN <<EOF
+#  apt-get install -y openssh-server
+#  mkdir /var/run/sshd
+#  sed -i 's/AcceptEnv .*/AcceptEnv no/' /etc/ssh/sshd_config
+#  rm /etc/update-motd.d/10-help-text
+#  sed -i 's/Welcome to /Welcome to Fresnel: /' /etc/update-motd.d/00-header
+#EOF
 # CMD exec /bin/bash -xc "sudo /usr/sbin/sshd -D"
 
 CMD exec /bin/bash -c "echo ok; trap : TERM INT; sleep infinity & wait"

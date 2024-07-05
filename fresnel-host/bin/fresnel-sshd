@@ -1,0 +1,52 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+cd $(dirname $0)/../..
+. fresnel.env
+
+: ${FRESNEL_SSHD_HOST_KEY:=$FRESNEL_HOME/fresnel-host/etc/fresnel-host-key-rsa}
+: ${FRESNEL_SSHD_CONF:=$FRESNEL_HOME/fresnel-host/etc/fresnel-sshd.conf}
+: ${FRESNEL_SSHD_LOG_FILE:=$FRESNEL_HOME/fresnel-host/logs/fresnel-sshd.log}
+: ${FRESNEL_SSHD_PID_FILE:=$FRESNEL_HOME/fresnel-host/logs/fresnel-sshd.pid}
+: ${FRESNEL_SSHD_PORT:=22022}
+: ${FRESNEL_SSHD_CMD:=/usr/sbin/sshd}
+
+createHostCert() {
+  if [ -f $FRESNEL_SSHD_HOST_KEY ]; then return; fi
+  ssh-keygen -f $FRESNEL_SSHD_HOST_KEY -N '' -t rsa
+}
+
+createSshdConf() {
+cat > $FRESNEL_SSHD_CONF <<EOF
+Port $FRESNEL_SSHD_PORT
+HostKey $FRESNEL_SSHD_HOST_KEY
+PidFile $FRESNEL_SSHD_PID_FILE
+UsePAM yes
+PermitRootLogin no
+AcceptEnv LANG LC_*
+Subsystem sftp /usr/libexec/sftp-server
+EOF
+}
+
+prepareLogs() {
+  local parent=$(dirname $FRESNEL_SSHD_LOG_FILE})
+  if [ ! -d $parent ]; then mkdir -p $parent; fi
+}
+
+killIfRunning() {
+  if [ ! -f $FRESNEL_SSHD_PID_FILE ]; then return; fi
+  local pid
+  pid=$(cat $FRESNEL_SSHD_PID_FILE)
+  echo "Killing $pid"
+  kill $pid
+}
+
+main() {
+  killIfRunning
+  createHostCert
+  createSshdConf
+  prepareLogs
+  $FRESNEL_SSHD_CMD -f $FRESNEL_SSHD_CONF -E $FRESNEL_SSHD_LOG_FILE
+}
+
+main

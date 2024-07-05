@@ -91,8 +91,9 @@ Fresnel provides a special mechanism that allows certain macOs commands to be in
 While not perfect, the Fresnel Exchange Agent can allow for a more native experience by providing support for tools like
 `open`, `pbcopy` and `pbpaste` to work.
 
-When the Fresnel environment is started, the `fresnel-commander` is automatically started and will process command requests.
-Within the Docker environment, `fresnel-command` can be used directly to execute command request. However, work-alike version of `pbcopy`, `pbpaste`, and `open` are provided and preferred.
+When the Fresnel environment is started, a dedicated sshd daemon is started.
+Within the Docker environment, `fresnel-host-command` can be used to start interactions from Fresnel to the host using SSH.
+Work-alike versions of `pbcopy`, `pbpaste`, and `open` are provided.
 
 
 
