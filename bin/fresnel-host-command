@@ -71,6 +71,7 @@ initialized() {
 }
 
 main() {
+  set -x
   local key=$HOME/.ssh/id_fresnel_host_rsa
   case ${1:---help} in
     --init) initialize $key;;

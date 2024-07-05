@@ -25,6 +25,7 @@ UsePAM yes
 PermitRootLogin no
 AcceptEnv LANG LC_*
 Subsystem sftp /usr/libexec/sftp-server
+AllowUsers $USER@127.0.0.1
 EOF
 }
 
@@ -38,7 +39,7 @@ killIfRunning() {
   local pid
   pid=$(cat $FRESNEL_SSHD_PID_FILE)
   echo "Killing $pid"
-  kill $pid
+  kill $pid || true
 }
 
 main() {
@@ -46,7 +47,10 @@ main() {
   createHostCert
   createSshdConf
   prepareLogs
-  $FRESNEL_SSHD_CMD -f $FRESNEL_SSHD_CONF -E $FRESNEL_SSHD_LOG_FILE
+  #
+  # Use nohup instead of normal daemon mode for sshd to allow access to the pasteboard.
+  #
+  nohup $FRESNEL_SSHD_CMD -D -f $FRESNEL_SSHD_CONF -E $FRESNEL_SSHD_LOG_FILE &
 }
 
 main
