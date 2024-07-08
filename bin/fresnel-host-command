@@ -7,18 +7,28 @@ APPLICATION_NAME=$0
 : ${FRESNEL_SSH_PORT:=22022}
 
 usage() {
-cat<<EOF
+cat > /dev/stderr <<EOF
 $0 [--init|--help]
 $0 command [args...]
 
 Execute a command on the Fresnel host machine.
-Initializatin is required before use.
+Initialization is required before use.
+
+INITIALIZATION
+
+From Mac
+- Open System Settings
+- Temporarily enable General > Sharing > Remote Login
+- Add yourself to the Allow Access list
 
 From Fresnel
-- $0 --init
+- $APPLICATION_NAME --init
 
-$0 open http://google.com
+EXAMPLES
+  $0 open http://google.com
+  cat somefile | $0 pbcopy
 
+${1:+ERROR:} ${1:-}
 EOF
 exit 1
 }
@@ -71,13 +81,14 @@ initialized() {
   if ! grep -q -F "Host fresnel-host" $sshConfig; then return 1; fi
 }
 
+
 main() {
   local key=$HOME/.ssh/id_fresnel_host_rsa
   case ${1:---help} in
     --init) initialize $key;;
     -h|--help) usage;;
   esac
-  if ! initialized $key; then echo "Initialization required. Run $APPLICATION_NAME --init" >> /dev/stderr; exit 1; fi
+  if ! initialized $key; then usage "Initialization required"; fi
   ssh fresnel-host $@
 }
 
