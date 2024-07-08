@@ -4,6 +4,8 @@ set -euo pipefail
 HOST_MACHINE=host.docker.internal
 APPLICATION_NAME=$0
 
+: ${FRESNEL_SSH_PORT:=22022}
+
 usage() {
 cat<<EOF
 $0 [--init|--help]
@@ -40,7 +42,7 @@ createKey() {
 copyKey() {
   local key=$1
   echo "Copying key $key for $HOST_USER"
-  ssh-copy-id -i $key $HOST_USER@$HOST_MACHINE
+  ssh-copy-id -i $key -p $FRESNEL_SSH_PORT $HOST_USER@$HOST_MACHINE
 }
 
 updateSshConfig() {
@@ -53,7 +55,7 @@ cat >> $sshConfig <<EOF
 # Content between markers is automatically managed by Fresnel
 Host fresnel-host
   Hostname $HOST_MACHINE
-  Port 22022
+  Port $FRESNEL_SSH_PORT
   User $HOST_USER
   IdentityFile $key
 # fresnel-host-command-end
