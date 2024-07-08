@@ -34,7 +34,6 @@ createKey() {
   local key=$1
   if [ -f $key ]; then return; fi
   echo "Creating key ..."
-  set -x
   ssh-keygen -t rsa -N "" -f $key
 }
 
@@ -71,7 +70,6 @@ initialized() {
 }
 
 main() {
-  set -x
   local key=$HOME/.ssh/id_fresnel_host_rsa
   case ${1:---help} in
     --init) initialize $key;;
