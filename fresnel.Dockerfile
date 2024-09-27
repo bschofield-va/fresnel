@@ -40,13 +40,6 @@ curl -sL -o /usr/local/bin/kubectl "https://dl.k8s.io/release/$(curl -L -s https
 chmod +x /usr/local/bin/kubectl
 EOF
 
-# Install talisman
-RUN <<EOF
-TALISMAN_URL="$(curl -Ls https://api.github.com/repos/thoughtworks/talisman/releases/latest | jq -r '.assets[].browser_download_url | select(contains("talisman_linux_amd64"))')"
-curl --silent --insecure --location --output /usr/local/bin/talisman "${TALISMAN_URL}"
-chmod +x /usr/local/bin/talisman
-EOF
-
 #
 # Ubuntu doesn't have the latest Emacs, but Kevin Kelley does
 # https://launchpad.net/~kelleyk/+archive/ubuntu/emacs
@@ -82,6 +75,12 @@ RUN apt-get install -y -q \
   libxml2-utils \
   zip
 
+# Install talisman
+RUN <<EOF
+TALISMAN_URL="$(curl -Ls https://api.github.com/repos/thoughtworks/talisman/releases/latest | jq -r '.assets[].browser_download_url | select(contains("talisman_linux_amd64"))')"
+curl --silent --insecure --location --output /usr/local/bin/talisman "${TALISMAN_URL}"
+chmod +x /usr/local/bin/talisman
+EOF
 
 #
 # Timezone
