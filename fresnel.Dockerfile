@@ -41,7 +41,10 @@ chmod +x /usr/local/bin/kubectl
 EOF
 
 # Install talisman
-RUN bash -c "$(curl --silent https://raw.githubusercontent.com/thoughtworks/talisman/main/install.sh)"
+# TERM environment variable isn't being passed and apparantly this the way it needs to be done with compose.
+ARG TERM
+ENV TERM=$TERM
+RUN bash -c "set -x ; $(curl --silent https://raw.githubusercontent.com/thoughtworks/talisman/main/install.sh| sed 's/curl --location --silent \([^ ]*\) >\([^ ]*\)/curl -vkL \1 -o \2/')"
 
 #
 # Ubuntu doesn't have the latest Emacs, but Kevin Kelley does
@@ -152,7 +155,7 @@ RUN if [ "${INSTALL_X_TOOLS:-}" = "true" ]; then apt-get install -y -q xclip kdi
 #
 # Because I use the fastest terminal I can find, install Alacritty terminfo.
 #
-RUN curl -sL https://github.com/alacritty/alacritty/releases/latest/download/alacritty.info -o /tmp/alacritty.info \
+RUN curl -skL https://github.com/alacritty/alacritty/releases/latest/download/alacritty.info -o /tmp/alacritty.info \
  && tic -xe alacritty,alacritty-direct /tmp/alacritty.info \
  && rm /tmp/alacritty.info
 
