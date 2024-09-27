@@ -41,10 +41,11 @@ chmod +x /usr/local/bin/kubectl
 EOF
 
 # Install talisman
-# TERM environment variable isn't being passed and apparantly this the way it needs to be done with compose.
-ARG TERM
-ENV TERM=$TERM
-RUN bash -c "set -x ; $(curl --silent https://raw.githubusercontent.com/thoughtworks/talisman/main/install.sh| sed 's/curl --location --silent \([^ ]*\) >\([^ ]*\)/curl -vkL \1 -o \2/')"
+RUN <<EOF
+TALISMAN_URL="$(curl -Ls https://api.github.com/repos/thoughtworks/talisman/releases/latest | jq -r '.assets[].browser_download_url | select(contains("talisman_linux_amd64"))')"
+curl --silent --insecure --location --output /usr/local/bin/talisman "${TALISMAN_URL}"
+chmod +x /usr/local/bin/talisman
+EOF
 
 #
 # Ubuntu doesn't have the latest Emacs, but Kevin Kelley does

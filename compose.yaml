@@ -8,7 +8,6 @@ services:
         - FRESNEL_USER_ID=$FRESNEL_USER_ID
         - FRESNEL_TIMEZONE=$FRESNEL_TIMEZONE
         - INSTALL_X_TOOLS=${INSTALL_X_TOOLS:-false}
-        - TERM=$TERM
     hostname: fresnel
     user: dev
     working_dir: /home/dev
