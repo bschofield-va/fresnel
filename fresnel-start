@@ -16,31 +16,14 @@ determineTimezone() {
   fi
 }
 
+
 doSomethingWithX11() {
   if /usr/bin/which xhost > /dev/null 2>&1
   then
-    if ! ps -fu $USER | grep -F X11.bin | grep -q -v grep
-    then
-      if [ -z "${FRESNEL_AUTO_START_X:-}" ]
-      then
-        read -p "XQuartz is available but not running? Start it? [Y/n] " FRESNEL_AUTO_START_X
-      fi
-      FRESNEL_AUTO_START_X="${FRESNEL_AUTO_START_X:-y}"
-      if [ "${FRESNEL_AUTO_START_X}" == "y" -o "${FRESNEL_AUTO_START_X}" == "Y" ]
-      then
-        echo "Starting XQuartz and enabling access from the localhost."
-        # Running xhost will automatically start the server.
-        xhost + 127.0.0.1
-      else
-        echo "X11 tools will be installed, but not usable until relaunched with XQuartz running."
-      fi
-    fi
     export INSTALL_X_TOOLS=true
-  else
-    echo "X11 not detected. Install XQuartz to gain access to X11 tools."
+    echo "X11 tools will be installed in Fresnel."
   fi
 }
-
 
 startFresnelSshd() {
   echo "Starting Fresnel sshd"

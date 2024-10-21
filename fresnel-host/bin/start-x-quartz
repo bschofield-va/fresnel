@@ -1,0 +1,41 @@
+#!/usr/bin/env bash
+set -euo pipefail
+if [ "${DEBUG:-false}" != false ]; then set -x; fi
+cd $(dirname $0)
+. ../../fresnel.env
+
+abortIfNotInstalled() {
+  if /usr/bin/which xhost > /dev/null 2>&1; then return 0; fi
+  echo "X11 not detected. Install XQuartz to gain access to X11 tools." >> /dev/stderr
+  exit 1
+}
+
+quitIfRunning() {
+  if ps -fu $USER | grep -F X11.bin | grep -q -v grep
+  then
+    exit 0
+  fi
+}
+
+guessDisplay() {
+  find /private/tmp -maxdepth 2 -name org.xquartz:0 | head -1
+}
+
+startX() {
+  ls /private/tmp/com.apple.launchd.7zR1PKjLMd/org.xquartz:0
+  if [ -z "${DISPLAY:-}" ]
+  then
+    export DISPLAY=$(guessDisplay)
+  fi
+  echo "Starting XQuartz and enabling access from the localhost."
+  # Running xhost will automatically start the server.
+  xhost + 127.0.0.1
+}
+
+main() {
+  abortIfNotInstalled
+  quitIfRunning
+  startX
+}
+
+main

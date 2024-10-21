@@ -1,0 +1,3 @@
+#!/usr/bin/env bash
+set -e
+fresnel-host-command bash -l $(fresnel-host-location fresnel-host/bin/start-x-quartz)
