@@ -93,9 +93,16 @@ RUN DEBIAN_FRONTEND=noninteractive apt-get install -y tzdata
 #
 # YQ
 #
-RUN add-apt-repository ppa:rmescandon/yq \
-  && apt update \
-  && apt install -y -q yq
+RUN <<EOF
+PACKAGE=yq_$(uname -sm | sed 's/aarch64/arm64/' | tr [:upper:] [:lower:] | tr ' ' _)
+BINARY=/usr/local/bin/yq
+
+curl -s https://api.github.com/repos/mikefarah/yq/releases/latest \
+  | jq '.assets[]|.name + " " + .url' -r \
+  | grep -F $PACKAGE | awk '{print $2}' \
+  | xargs curl -sL -H "Accept: application/octet-stream" -o $BINARY \
+chmod 755 $BINARY
+EOF
 
 #
 # GitHub CLI, which must be after base tools
