@@ -13,6 +13,9 @@ RUN apt-get install -y -q software-properties-common
 RUN apt-get install -y -q ca-certificates
 RUN yes | unminimize
 
+#
+# ZScalar Nonsense
+#
 COPY <<EOF /bin/z-failer-strikes-again
 #!/usr/bin/env bash
 echo "Acquire::https::\$1::Verify-Peer \"false\";" > /etc/apt/apt.conf.d/\$1.conf
@@ -21,7 +24,10 @@ echo "Created /etc/apt/apt.conf.d/\$1.conf"
 cat /etc/apt/apt.conf.d/\$1.conf
 EOF
 
-RUN chmod +x /bin/z-failer-strikes-again
+COPY certs/ZscalerRootCA.crt /usr/local/share/ca-certificates/
+
+RUN chmod +x /bin/z-failer-strikes-again \
+  && update-ca-certificates
 
 #
 # Heavy downloads
