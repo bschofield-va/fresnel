@@ -36,7 +36,6 @@ services:
       - .:/fresnel-dev
       - /var/run/docker.sock:/var/run/docker.sock
       - /tmp/.X11-unix:/tmp/.X11-unix:rw
-      - $FRESNEL_EXCHANGE_DIR:/var/run/fresnel
       - $HOME/.fresnel/home:/home/dev
       - $HOME/.m2/repository:/repository
       - $FRESNEL_GITHUB_REPO_DIR:/va
