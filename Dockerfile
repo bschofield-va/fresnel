@@ -176,8 +176,8 @@ RUN curl -skL https://github.com/alacritty/alacritty/releases/latest/download/al
 #
 # Fresnel provided tools and configuration
 #
-env FRESNEL_HOME=/opt/fresnel
-env PATH=$FRESNEL_HOME/bin:$PATH
+ENV FRESNEL_HOME=/opt/fresnel
+ENV PATH=$FRESNEL_HOME/bin:$PATH
 COPY etc/ $FRESNEL_HOME/etc
 COPY bin/ $FRESNEL_HOME/bin
 RUN ln -s $FRESNEL_HOME/bin/open $FRESNEL_HOME/bin/xdg-open \

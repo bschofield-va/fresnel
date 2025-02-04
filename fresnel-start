@@ -4,6 +4,10 @@ if [ "${DEBUG:-false}" != false ]; then set -x; fi
 cd $(dirname $0)
 . fresnel.env
 
+: ${FRESNEL_SESSION_ID:=fresnel}
+: ${DOCKER_CLI_HINTS:=false}
+export DOCKER_CLI_HINTS
+
 determineTimezone() {
   # Guess which timezone
   if [ "${FRESNEL_TIMEZONE:-automatic}" == automatic ]
@@ -21,19 +25,90 @@ doSomethingWithX11() {
   if /usr/bin/which xhost > /dev/null 2>&1
   then
     export INSTALL_X_TOOLS=true
-    echo "X11 tools will be installed in Fresnel."
+    echo "X11 tools will be installed in Fresnel"
   fi
 }
 
 startFresnelSshd() {
-  echo "Starting Fresnel sshd"
+  echo "Starting Fresnel SSH daemon"
   ./fresnel-host/bin/fresnel-sshd
 }
 
-determineTimezone
-doSomethingWithX11
-startFresnelSshd
 
-docker compose build $@
-docker compose up --detach --force-recreate
+buildFresnelImage() {
+  docker build \
+    --tag $FRESNEL_SESSION_ID \
+    --build-arg FRESNEL_USER_ID=$FRESNEL_USER_ID \
+    --build-arg FRESNEL_TIMEZONE=$FRESNEL_TIMEZONE \
+    --build-arg INSTALL_X_TOOLS=${INSTALL_X_TOOLS:-false} \
+   .
+}
+
+
+findFresnelInstance() {
+  docker ps --filter Name=^/$FRESNEL_SESSION_ID\$ --quiet $@
+}
+
+stopFresnelInstance() {
+  local id
+  id=$(findFresnelInstance)
+  while [ -n "${id:-}" ]
+  do
+    echo "Killing container $id"
+    docker kill $id > /dev/null
+    sleep 0.1
+    id=$(findFresnelInstance)
+  done
+  id=$(findFresnelInstance --all)
+  if [ -n "${id:-}" ]
+  then
+    echo "Removing container $id"
+    docker rm $id > /dev/null
+  fi
+}
+
+dockerPortOptions() {
+  case "${FRESNEL_PORTS:-default}" in
+    default) FRESNEL_PORTS=${FRESNEL_DEFAULT_PORTS[@]};;
+    none) return;;
+  esac
+  for p in ${FRESNEL_PORTS}; do echo --publish $p; done
+}
+
+startFresnelInstance() {
+  echo "Starting Fresnel"
+  docker run \
+    --privileged \
+    --detach \
+    --name $FRESNEL_SESSION_ID \
+    --hostname $FRESNEL_SESSION_ID \
+    --user dev \
+    --workdir /home/dev \
+    --env USER=dev \
+    --env HOST_USER=$USER \
+    --env TERM \
+    --env GIT_CEILING_DIRECTORIES=/va:/home/dev \
+    --env DISPLAY=host.docker.internal:0 \
+    $(dockerPortOptions) \
+    --volume .:/fresnel-dev \
+    --volume /var/run/docker.sock:/var/run/docker.sock \
+    --volume /tmp/.X11-unix:/tmp/.X11-unix:rw \
+    --volume $HOME/.fresnel/home:/home/dev \
+    --volume $HOME/.m2/repository:/repository \
+    --volume $FRESNEL_GITHUB_REPO_DIR:/va \
+    --volume $HOME/Downloads:/Downloads \
+    $FRESNEL_SESSION_ID
+}
+
+main() {
+  echo "Starting Fresnel session $FRESNEL_SESSION_ID"
+  determineTimezone
+  doSomethingWithX11
+  startFresnelSshd
+  stopFresnelInstance
+  buildFresnelImage
+  startFresnelInstance
+}
+
+main
 
