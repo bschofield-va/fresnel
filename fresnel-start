@@ -4,9 +4,7 @@ if [ "${DEBUG:-false}" != false ]; then set -x; fi
 cd $(dirname $0)
 . fresnel.conf
 
-: ${FRESNEL_SESSION_ID:=fresnel}
-: ${DOCKER_CLI_HINTS:=false}
-export DOCKER_CLI_HINTS
+export DOCKER_CLI_HINTS=false
 
 determineTimezone() {
   # Guess which timezone
@@ -49,9 +47,31 @@ findFresnelInstance() {
   docker ps --filter Name=^/$FRESNEL_SESSION_ID\$ --quiet $@
 }
 
+shouldWeMurderIt() {
+  local id="${1:-}"
+  if [ -z "${id:-}" ]; then return 0; fi
+  case "${FRESNEL_KILL,,}" in
+    yes|true) return 0;;
+    no|false) return 1;;
+  esac
+  while [ true ]
+  do
+    read -p "Fresnel session $FRESNEL_SESSION_ID is running. Kill it? " KILL_IT
+    case "${KILL_IT,,}" in
+      y*) return 0;;
+      n*) return 1;;
+    esac
+  done
+}
+
 stopFresnelInstance() {
   local id
   id=$(findFresnelInstance)
+  if ! shouldWeMurderIt $id
+  then
+    echo "Fresnel $FRESNEL_SESSION_ID is already running. Aborting."
+    exit 0
+  fi
   while [ -n "${id:-}" ]
   do
     echo "Killing container $id"
@@ -104,10 +124,11 @@ main() {
   echo "Starting Fresnel session $FRESNEL_SESSION_ID"
   determineTimezone
   doSomethingWithX11
-  startFresnelSshd
   stopFresnelInstance
   buildFresnelImage
+  startFresnelSshd
   startFresnelInstance
+  echo "Login into Fresnel with $FRESNEL_HOME/fsh"
 }
 
 main
