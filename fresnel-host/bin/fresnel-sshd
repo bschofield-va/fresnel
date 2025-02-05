@@ -9,6 +9,7 @@ cd $(dirname $0)/../..
 : ${FRESNEL_SSHD_CONF:=$FRESNEL_HOME/fresnel-host/etc/fresnel-sshd.conf}
 : ${FRESNEL_SSHD_LOG_FILE:=$FRESNEL_HOME/fresnel-host/logs/fresnel-sshd.log}
 : ${FRESNEL_SSHD_PID_FILE:=$FRESNEL_HOME/fresnel-host/logs/fresnel-sshd.pid}
+: ${FRESNEL_SSHD_NOHUP_LOG:=$FRESNEL_HOME/fresnel-host/logs/fresnel-sshd.nohup.out}
 : ${FRESNEL_SSHD_PORT:=22022}
 : ${FRESNEL_SSHD_CMD:=/usr/sbin/sshd}
 
@@ -64,7 +65,7 @@ main() {
   #
   # Use nohup instead of normal daemon mode for sshd to allow access to the pasteboard.
   #
-  nohup $FRESNEL_SSHD_CMD -D -f $FRESNEL_SSHD_CONF -E $FRESNEL_SSHD_LOG_FILE 2> /dev/null &
+  nohup $FRESNEL_SSHD_CMD -D -f $FRESNEL_SSHD_CONF -E $FRESNEL_SSHD_LOG_FILE 2> /dev/null > $FRESNEL_SSHD_NOHUP_LOG &
 }
 
 main
