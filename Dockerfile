@@ -195,4 +195,4 @@ RUN ln -s $FRESNEL_HOME/bin/open $FRESNEL_HOME/bin/xdg-open \
 #EOF
 # CMD exec /bin/bash -xc "sudo /usr/sbin/sshd -D"
 
-CMD exec /bin/bash -c "echo ok; trap : TERM INT; sleep infinity & wait"
+CMD [ "/bin/bash", "-c", "echo ok; trap : TERM INT; sleep infinity & wait" ]

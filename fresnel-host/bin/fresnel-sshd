@@ -2,7 +2,7 @@
 set -euo pipefail
 
 cd $(dirname $0)/../..
-. fresnel.env
+. fresnel.conf
 
 : ${FRESNEL_SSHD_RESTART_IF_RUNNING:=true}
 : ${FRESNEL_SSHD_HOST_KEY:=$FRESNEL_HOME/fresnel-host/etc/fresnel-host-key-rsa}

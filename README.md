@@ -26,7 +26,7 @@ fsh
 | Fresnel       |  Real World        | Why |
 |---------------|--------------------|-----|
 | `/home/dev`   | `~/.fresnel/home`  | Allow you Fresnel home to be separate from your host OS, but still be shared across sessions. |
-| `/va`         | `~/va`             | Allow source code to be shared with IDEs. See `FRESNEL_GITHUB_REPO_DIR` in `fresnel.env`.|
+| `/va`         | `~/va`             | Allow source code to be shared with IDEs. See `FRESNEL_GITHUB_REPO_DIR` in `fresnel.conf`.|
 | `/repository` | `~/.m2/repository` | ALlow Maven repository to be shared with IDEs. Fresnel provides tooling to generate a `settings.xml` that uses this mount. |
 
 
@@ -132,7 +132,7 @@ etc/               - Configuration for the Fresnel environment
 fbin/              - Tools and utilities used by Fresnel directly
 compose.yaml       - The Docker Compose file that defines how Fresnel should be launched
 fresnel.Dockerfile - The Dockerfile to create Fresnel
-fresnel.env        - Environment variables that control how Fresnel starts or is used
+fresnel.conf        - Environment variables that control how Fresnel starts or is used
 
 host-bin/          - Tools and utilities that can be used on the host
 ```

@@ -2,7 +2,7 @@
 set -euo pipefail
 if [ "${DEBUG:-false}" != false ]; then set -x; fi
 cd $(dirname $0)
-. fresnel.env
+. fresnel.conf
 
 : ${FRESNEL_SESSION_ID:=fresnel}
 : ${DOCKER_CLI_HINTS:=false}
