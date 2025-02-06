@@ -138,11 +138,11 @@ fsh                - Start an interactive Fresnel session
 
 bin/               - Tools and utilities provided in the Fresnel environment
 etc/               - Configuration for the Fresnel environment
+certs/             - Certificates to work well within the BAH network
 
 fbin/              - Tools and utilities used by Fresnel directly
 compose.yaml       - The Docker Compose file that defines how Fresnel should be launched
 fresnel.Dockerfile - The Dockerfile to create Fresnel
 fresnel.conf       - Environment variables that control how Fresnel starts or is used
 
-host-bin/          - Tools and utilities that can be used on the host
 ```
