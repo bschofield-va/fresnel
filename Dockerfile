@@ -176,7 +176,8 @@ curl -s https://api.github.com/repos/derailed/k9s/releases/latest \
   | jq '.assets[]|.name + " " + .url' -r \
   | grep -iF "$PACKAGE " \
   | awk '{print $2}' \
-  | xargs -t curl -fsL -H "Accept: application/octet-stream" -o $BINARY
+  | xargs -t curl -fsL -H "Accept: application/octet-stream" \
+  | tar -xzO k9s > $BINARY
 chmod 755 $BINARY
 EOF
 
