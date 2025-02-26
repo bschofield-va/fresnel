@@ -26,8 +26,18 @@ fsh
 | Fresnel       |  Real World        | Why |
 |---------------|--------------------|-----|
 | `/home/dev`   | `~/.fresnel/home`  | Allow you Fresnel home to be separate from your host OS, but still be shared across sessions. |
-| `/va`         | `~/va`             | Allow source code to be shared with IDEs. See `FRESNEL_GITHUB_REPO_DIR` in `fresnel.env`.|
+| `/va`         | `~/va`             | Allow source code to be shared with IDEs. See `FRESNEL_GITHUB_REPO_DIR` in `fresnel.conf`.|
 | `/repository` | `~/.m2/repository` | ALlow Maven repository to be shared with IDEs. Fresnel provides tooling to generate a `settings.xml` that uses this mount. |
+
+
+## Configuration
+The Fresnel environment will try to make reasonable default decisions.
+At launch time, several options can be used to control the behavior.
+See `fresnel.conf` for configuration options, such as ports.
+
+`fresnel.conf` should not be modified locally. A separate local configuration file may be used to override default options.
+By default, `~/.fresnel/local.conf` will be used if present.
+Use `FRESNEL_CONF` to specify a custom file.
 
 
 ## Initialization
@@ -128,11 +138,11 @@ fsh                - Start an interactive Fresnel session
 
 bin/               - Tools and utilities provided in the Fresnel environment
 etc/               - Configuration for the Fresnel environment
+certs/             - Certificates to work well within the BAH network
 
 fbin/              - Tools and utilities used by Fresnel directly
 compose.yaml       - The Docker Compose file that defines how Fresnel should be launched
 fresnel.Dockerfile - The Dockerfile to create Fresnel
-fresnel.env        - Environment variables that control how Fresnel starts or is used
+fresnel.conf       - Environment variables that control how Fresnel starts or is used
 
-host-bin/          - Tools and utilities that can be used on the host
 ```

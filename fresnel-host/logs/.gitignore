@@ -1,2 +1,3 @@
-fresnel-sshd.pid
-fresnel-sshd.log
+*.pid
+*.log
+*.out

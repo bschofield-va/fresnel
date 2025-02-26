@@ -2,12 +2,14 @@
 set -euo pipefail
 
 cd $(dirname $0)/../..
-. fresnel.env
+. fresnel.conf
 
+: ${FRESNEL_SSHD_RESTART_IF_RUNNING:=true}
 : ${FRESNEL_SSHD_HOST_KEY:=$FRESNEL_HOME/fresnel-host/etc/fresnel-host-key-rsa}
 : ${FRESNEL_SSHD_CONF:=$FRESNEL_HOME/fresnel-host/etc/fresnel-sshd.conf}
 : ${FRESNEL_SSHD_LOG_FILE:=$FRESNEL_HOME/fresnel-host/logs/fresnel-sshd.log}
 : ${FRESNEL_SSHD_PID_FILE:=$FRESNEL_HOME/fresnel-host/logs/fresnel-sshd.pid}
+: ${FRESNEL_SSHD_NOHUP_LOG:=$FRESNEL_HOME/fresnel-host/logs/fresnel-sshd.nohup.out}
 : ${FRESNEL_SSHD_PORT:=22022}
 : ${FRESNEL_SSHD_CMD:=/usr/sbin/sshd}
 
@@ -30,27 +32,40 @@ EOF
 }
 
 prepareLogs() {
-  local parent=$(dirname $FRESNEL_SSHD_LOG_FILE})
+  local parent=$(dirname $FRESNEL_SSHD_LOG_FILE)
   if [ ! -d $parent ]; then mkdir -p $parent; fi
 }
 
-killIfRunning() {
+checkForRunningSshd() {
   if [ ! -f $FRESNEL_SSHD_PID_FILE ]; then return; fi
   local pid
   pid=$(cat $FRESNEL_SSHD_PID_FILE)
-  echo "Killing $pid"
+  if ps -p $pid -o pid,comm | grep -q 'sshd'
+  then
+    quitOrKillRunningSshd $pid
+  fi
+}
+
+quitOrKillRunningSshd() {
+  local pid=$1
+  if [ $FRESNEL_SSHD_RESTART_IF_RUNNING == false ]
+  then
+    echo "SSH daemon is already running ($pid)"
+    exit 0
+  fi
+  echo "Killing SSH daemon $pid"
   kill $pid || true
 }
 
 main() {
-  killIfRunning
+  checkForRunningSshd
   createHostCert
   createSshdConf
   prepareLogs
   #
   # Use nohup instead of normal daemon mode for sshd to allow access to the pasteboard.
   #
-  nohup $FRESNEL_SSHD_CMD -D -f $FRESNEL_SSHD_CONF -E $FRESNEL_SSHD_LOG_FILE &
+  nohup $FRESNEL_SSHD_CMD -D -f $FRESNEL_SSHD_CONF -E $FRESNEL_SSHD_LOG_FILE 2> /dev/null > $FRESNEL_SSHD_NOHUP_LOG &
 }
 
 main
