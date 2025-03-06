@@ -83,6 +83,7 @@ RUN apt-get install -y -q \
   bash-completion \
   bc \
   curl \
+  dialog \
   dos2unix \
   gettext-base \
   git \
