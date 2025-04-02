@@ -56,6 +56,9 @@ RUN <<EOF
 RELEASE=$(curl -L -s https://dl.k8s.io/release/stable.txt)
 curl -sL -o /usr/local/bin/kubectl "https://dl.k8s.io/release/$RELEASE/bin/linux/arm64/kubectl"
 chmod +x /usr/local/bin/kubectl
+# Argo Rollouts Kubectl Plugin
+curl -sL -o /usr/local/bin/kubectl-argo-rollouts https://github.com/argoproj/argo-rollouts/releases/latest/download/kubectl-argo-rollouts-linux-arm64
+chmod +x /usr/local/bin/kubectl-argo-rollouts
 EOF
 
 
