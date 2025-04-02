@@ -30,7 +30,8 @@ determineMounts() {
 }
 
 printOutsideEquivalent() {
-  local inside=$(readlink -f $1)
+  local file="$1"
+  local inside=$(readlink -m "$file")
   local insideMountPoint=$inside
   while [ "$insideMountPoint" != "/" ]
   do

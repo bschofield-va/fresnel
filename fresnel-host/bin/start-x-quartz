@@ -18,11 +18,10 @@ quitIfRunning() {
 }
 
 guessDisplay() {
-  find /private/tmp -maxdepth 2 -name org.xquartz:0 | head -1
+  find /private/tmp -maxdepth 2 -name org.xquartz:0 2>/dev/null | head -1
 }
 
 startX() {
-  ls /private/tmp/com.apple.launchd.7zR1PKjLMd/org.xquartz:0
   if [ -z "${DISPLAY:-}" ]
   then
     export DISPLAY=$(guessDisplay)

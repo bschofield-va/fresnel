@@ -1,0 +1,93 @@
+#!/usr/bin/env bash
+set -euo pipefail
+if [ "${DEBUG:-false}" != false ]; then set -x; fi
+
+#
+# Default MacOS readlink cannot handle non-links
+#
+APP_NAME=$(/usr/bin/readlink $0) || true
+if [ -z "${APP_NAME:-}" ]; then APP_NAME=$0; fi
+APP_NAME=$(basename $APP_NAME)
+
+CISCO_VPN=/opt/cisco/secureclient/bin/vpn
+VPN_HOST=mobility.bah.com
+
+#============================================================
+usage() {
+cat<<EOF
+$0 <command> [arguments]
+
+Tools for working within a Booz Allen Hamilton machine.
+
+COMMANDS
+help
+  Print this help and exit.
+
+vpn <command>
+  Control the BAH VPN.
+  alias: v
+  Commands:
+    connect
+      Connect to the VPN
+      alias: up, u, c
+    disconnect
+      Disconnect from the VPN
+      alias: down, dn, d, dis
+    status
+      Print the VPN connection status.
+      alias: st
+
+Examples:
+  $APP_NAME vpn up
+  $APP_NAME vpn dn
+
+EOF
+die "${1:-}"
+}
+
+die() {
+  echo "${1-}"
+  exit 1
+}
+
+main() {
+  if [ $# -eq 0 ]; then usage "No command specified"; fi
+  local command=$1
+  shift
+  case $command in
+    -h*|--h*|help) usage;;
+    v|vpn) vpn $@;;
+    *) usage "Unknown command: $command"
+  esac
+}
+
+
+#============================================================
+
+vpn() {
+  if [ $# -eq 0 ]; then usage "No sub-command specified"; fi
+  local command=$1
+  shift
+  case $command in
+    u|up|c|connect) vpnUp;;
+    d|dn|down|dis|disconnect) vpnDown;;
+    st|status) vpnStatus;;
+    *) usage "Unknown vpn sub-command: $command";;
+  esac
+}
+
+vpnUp() {
+  $CISCO_VPN connect $VPN_HOST | grep ">>"
+}
+
+vpnDown() {
+  $CISCO_VPN disconnect $VPN_HOST | grep ">>"
+}
+
+vpnStatus() {
+  $CISCO_VPN status | grep ">>"
+}
+
+#============================================================
+
+main $@
