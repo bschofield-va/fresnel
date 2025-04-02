@@ -96,12 +96,16 @@ RUN apt-get install -y -q \
   man-db \
   ncal \
   sudo \
+  sqlite3 \
   tmux \
   tinyproxy \
   unzip \
   vim \
   libxml2-utils \
   zip
+
+RUN apt-get install -y -q \
+sqlite3
 
 # Install talisman
 RUN <<EOF

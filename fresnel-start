@@ -34,7 +34,10 @@ startFresnelSshd() {
 
 
 buildFresnelImage() {
+  local cacheOpt
+  if [ "${FRESNEL_BUILD_USE_CACHE:-true}" == false ]; then cacheOpt="--no-cache"; fi
   docker build \
+    ${cacheOpt:-} \
     --tag $FRESNEL_SESSION_ID \
     --build-arg FRESNEL_USER_ID=$FRESNEL_USER_ID \
     --build-arg FRESNEL_TIMEZONE=$FRESNEL_TIMEZONE \
