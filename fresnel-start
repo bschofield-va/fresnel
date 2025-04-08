@@ -101,6 +101,12 @@ dockerPortOptions() {
   for p in ${FRESNEL_PORTS}; do echo --publish $p; done
 }
 
+optionalVolume() {
+  local hostDir="${1:-}" containerDir="${2}"
+  if [ -z "${hostDir:-}" ]; then return; fi
+  if [ -L "${hostDir}" ]; then hostDir=$(readlink $hostDir); fi
+  if [ -d "$hostDir" ]; then echo "--volume $hostDir:$containerDir"; fi
+}
 
 startFresnelInstance() {
   echo "Starting Fresnel"
@@ -122,8 +128,10 @@ startFresnelInstance() {
     --volume /tmp/.X11-unix:/tmp/.X11-unix:rw \
     --volume $HOME/.fresnel/home:/home/dev \
     --volume $HOME/.m2/repository:/repository \
-    --volume $FRESNEL_GITHUB_REPO_DIR:/va \
     --volume $HOME/Downloads:/Downloads \
+    $(optionalVolume $FRESNEL_VA_GITHUB_REPO_DIR /va ) \
+    $(optionalVolume $FRESNEL_BAH_GITHUB_REPO_DIR /bah ) \
+    $(optionalVolume $FRESNEL_ONEDRIVE_DIR /onedrive ) \
     $FRESNEL_SESSION_ID
 }
 

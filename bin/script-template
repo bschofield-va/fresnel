@@ -4,14 +4,86 @@ awk 'NR > 4' $(readlink -f $0) ; exit 0
 #-- template starts below this line --
 #!/usr/bin/env bash
 set -euo pipefail
-if [ "${DEBUG:-false}" != false ]; then set -x; fi
+if [ -n "${DEBUG:-}" ]; then set -x; fi
 
 APP_NAME=$(basename $(readlink -f $0))
-CONF_FILE=${CONF_FILE:-~/.config/$APP_NAME/$APP_NAME.conf}
+declare -A COMMAND_HELP
+declare -A COMMAND_ALIAS
+registerCommand() {
+  local delimeter="^"
+  if [ "${#1}" == 1 ]; then delimiter=${1}; shift; fi
+  local command="$1"  args="$2"
+  shift 2
+  COMMAND_HELP["$command"]+="${delimeter}${args:-}"
+  while [ -n "${1:-}" ]
+  do
+    COMMAND_HELP["$command"]+="${delimeter}${1}"
+    shift
+  done
+}
+
+aliasCommand() {
+  local command="${1}"
+  shift
+  while [ -n "${1:-}" ]
+  do
+    COMMAND_ALIAS["$1"]="$command"
+    shift
+  done
+}
+
+usageCommands() {
+  for command in $(printf "%s\n" ${!COMMAND_HELP[@]} | sort); do usageCommand $command; done
+}
+
+usageCommand() {
+  local command="$1"
+  local spec delimeter parts
+  spec="${COMMAND_HELP[$command]}"
+  delimeter=${spec:0:1}
+  readarray -t -d $delimeter parts <<< "${spec:1}"
+  local argSummary helpStart=0
+  if [ "${parts[0]:0:1}" == "[" ]
+  then
+    argSummary="${parts[0]}"
+    helpStart=1
+  fi
+  echo "$command ${argSummary:-}"
+  for ((i=$helpStart;i<${#parts[@]};i++)); do echo "  ${parts[$i]%$'\n'}"; done
+  local aliases
+  aliases=$(for name in ${!COMMAND_ALIAS[@]}; do if [ "${COMMAND_ALIAS[$name]}" == "$command" ]; then echo "$name"; fi; done | sort | paste -sd ',')
+  if [ -n "${aliases:-}" ]; then echo "  alias: ${aliases}"; fi
+}
 
 
 #============================================================
-usage() {
+log() { echo "$@" >&2; }
+die() { echo "${1-}" >&2; exit 1; }
+
+dieIfMissingValue() {
+  local param=$1
+  local value="${2:-}"
+  if [ -z "${value:-}" ]; then die "Missing value for $param"; fi
+}
+
+requireParameterValue() {
+  dieIfMissingValue "$@"
+  echo "$2"
+}
+
+main() {
+  if [ $# -eq 0 ]; then cmd-help "No command specified"; fi
+  local command="${1}"
+  shift
+  if [ -n "${COMMAND_ALIAS[$command]:-}" ]; then command="${COMMAND_ALIAS[$command]}"; fi
+  if [ -z "${COMMAND_HELP[$command]:-}" ]; then cmd-help "Unknown command: $command"; fi
+  cmd-$command "$@"
+}
+
+
+#============================================================
+registerCommand help "Print this help and exit"
+cmd-help() {
 cat<<EOF
 $0 <command> [arguments]
 
@@ -20,45 +92,16 @@ help me.
 $APP_NAME configuration file: $CONF_FILE
 
 COMMANDS
-help
-  Print this help and exit.
-help-config
-  Print a documented configuration sample.
-
-some-command [-a|-b] name [name ...]
-  Do a thing.
-  -a, --amazing  Activate amazing mode.
-  -b, --bogus    Nvm. Don't be amazing.
-  alias: s
+$(usageCommands)
 
 EOF
 die "${1:-}"
 }
 
-die() {
-  echo "${1-}"
-  exit 1
-}
-
-dieIfMissingValue() {
-  local param=$1
-  local value="${2:-}"
-  if [ -z "${value:-}" ]; then die "Missing value for $param"; fi
-}
-
-main() {
-  if [ $# -eq 0 ]; then usage "No command specified"; fi
-  local command=$1
-  shift
-  case $command in
-    -h*|--h*|help) usage;;
-    help-config) createSample;;
-    *) usage "Unknown command: $command"
-  esac
-}
-
 
 #============================================================
+
+CONF_FILE=${CONF_FILE:-~/.config/$APP_NAME/$APP_NAME.conf}
 
 loadConf() {
   if [ ! -f ${CONF_FILE} ]
@@ -70,12 +113,16 @@ loadConf() {
 
 createSampleAndDie() {
   mkdir -p $(dirname $CONF_FILE)
-  createSample $CONF_FILE
+  cmd-create-sample-conf $CONF_FILE
   echo "I've created a template configuration for you here: $CONF_FILE"
   exit 1
 }
 
-createSample() {
+
+registerCommand "create-sample-conf" "[file]" \
+  "Print a sample configuration file" \
+  "If no file is provided, sample will printed to stdout"
+cmd-create-sample-conf() {
 local destination=${1:-/dev/stdout}
 cat > $destination <<EOF
 #
@@ -89,4 +136,4 @@ EOF
 
 #============================================================
 
-main $@
+main "$@"
