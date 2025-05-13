@@ -53,6 +53,17 @@ EOF
 #
 RUN apt-get install -y -q docker docker-compose
 RUN <<EOF
+keyring=/etc/apt/keyrings/docker.asc
+curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o $keyring
+chmod a+r $keyring
+echo \
+  "deb [arch=$(dpkg --print-architecture) signed-by=$keyring] https://download.docker.com/linux/ubuntu $(. /etc/os-release && echo "${UBUNTU_CODENAME:-$VERSION_CODENAME}") stable" \
+  | tee /etc/apt/sources.list.d/docker.list
+apt-get update -y -q
+apt-get install -y docker-ce-cli docker-buildx-plugin docker-compose-plugin
+EOF
+
+RUN <<EOF
 RELEASE=$(curl -L -s https://dl.k8s.io/release/stable.txt)
 curl -sL -o /usr/local/bin/kubectl "https://dl.k8s.io/release/$RELEASE/bin/linux/arm64/kubectl"
 chmod +x /usr/local/bin/kubectl

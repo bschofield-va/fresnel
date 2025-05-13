@@ -77,6 +77,9 @@ main() {
   shift
   if [ -n "${COMMAND_ALIAS[$command]:-}" ]; then command="${COMMAND_ALIAS[$command]}"; fi
   if [ -z "${COMMAND_HELP[$command]:-}" ]; then cmd-help "Unknown command: $command"; fi
+  case "${1:-}" in
+    -h|--help|help) usageCommand $command >&2 ; exit 1;;
+  esac
   cmd-$command "$@"
 }
 
