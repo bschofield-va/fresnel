@@ -44,7 +44,7 @@ z-failer-strikes-again apt.corretto.aws
 apt-key add /tmp/corretto.key
 add-apt-repository -S 'deb https://apt.corretto.aws stable main'
 apt-get update -y -q
-apt-get install -y java-17-amazon-corretto-jdk
+apt-get install -y java-21-amazon-corretto-jdk
 EOF
 
 

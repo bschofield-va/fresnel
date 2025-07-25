@@ -127,7 +127,6 @@ startFresnelInstance() {
     --volume /var/run/docker.sock:/var/run/docker.sock \
     --volume /tmp/.X11-unix:/tmp/.X11-unix:rw \
     --volume $HOME/.fresnel/home:/home/dev \
-    --volume $HOME/.m2/repository:/repository \
     --volume $HOME/Downloads:/Downloads \
     $(optionalVolume $FRESNEL_VA_GITHUB_REPO_DIR /va ) \
     $(optionalVolume $FRESNEL_BAH_GITHUB_REPO_DIR /bah ) \
