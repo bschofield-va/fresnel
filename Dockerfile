@@ -6,12 +6,13 @@
 #   - released 2022-04-22
 #   - JDK 16 packages not available
 #
-FROM arm64v8/ubuntu:jammy
+FROM arm64v8/ubuntu:noble
+SHELL ["/bin/bash","-e","-u","-o","pipefail","-c"]
 
 RUN apt-get update -y -q
 RUN apt-get install -y -q software-properties-common
 RUN apt-get install -y -q ca-certificates
-RUN yes | unminimize
+RUN yes | unminimize || true
 
 #
 # ZScalar Nonsense
@@ -51,7 +52,6 @@ EOF
 #
 # Docker and kubectl
 #
-RUN apt-get install -y -q docker docker-compose
 RUN <<EOF
 keyring=/etc/apt/keyrings/docker.asc
 curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o $keyring
@@ -74,16 +74,6 @@ EOF
 
 
 #
-# Ubuntu doesn't have the latest Emacs, but Kevin Kelley does
-# https://launchpad.net/~kelleyk/+archive/ubuntu/emacs
-#
-RUN z-failer-strikes-again ppa.launchpadcontent.net \
- && add-apt-repository -P ppa:kelleyk/emacs \
- && apt update -y -q \
- && apt-get install -y -q emacs28-nox
-
-
-#
 # X11 support
 #
 ARG INSTALL_X_TOOLS
@@ -99,6 +89,7 @@ RUN apt-get install -y -q \
   curl \
   dialog \
   dos2unix \
+  emacs-nox \
   gettext-base \
   git \
   git-crypt \
@@ -206,17 +197,19 @@ EOF
 #
 ARG FRESNEL_USER_ID
 
-RUN if [ -z "$FRESNEL_USER_ID" ]; then echo "FRESNEL_USER_ID is not defined"; exit 1; fi \
-  && useradd -ms /usr/bin/bash -u $FRESNEL_USER_ID dev \
-  && echo "dev\ndev" | passwd dev \
-  && usermod -aG sudo,docker dev \
-  && echo 'dev ALL=(ALL) NOPASSWD: ALL' >> /etc/sudoers
-
+RUN <<EOF
+if [ -z "$FRESNEL_USER_ID" ]; then echo "FRESNEL_USER_ID is not defined"; exit 1; fi
+useradd -ms /usr/bin/bash -u $FRESNEL_USER_ID dev
+echo "dev:dev" | chpasswd
+groupadd docker
+usermod -aG sudo,docker dev
+echo 'dev ALL=(ALL) NOPASSWD: ALL' >> /etc/sudoers
+EOF
 
 #
 # Maven
 #
-ARG MVN_VERSION=3.9.9
+ARG MVN_VERSION=3.9.11
 RUN <<EOF
 curl -sL http://archive.apache.org/dist/maven/maven-3/$MVN_VERSION/binaries/apache-maven-$MVN_VERSION-bin.tar.gz \
   | tar -xz -C /opt
