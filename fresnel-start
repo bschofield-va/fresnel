@@ -54,16 +54,16 @@ findFresnelInstance() {
 shouldWeMurderIt() {
   local id="${1:-}"
   if [ -z "${id:-}" ]; then return 0; fi
-  case "${FRESNEL_KILL,,}" in
-    yes|true) return 0;;
-    no|false) return 1;;
+  case "${FRESNEL_KILL}" in
+    Y*|y*|true) return 0;;
+    N*|n*|false) return 1;;
   esac
   while [ true ]
   do
     read -p "Fresnel session $FRESNEL_SESSION_ID is running. Kill $FRESNEL_SESSION_ID? " KILL_IT
-    case "${KILL_IT,,}" in
-      y*) return 0;;
-      n*) return 1;;
+    case "${KILL_IT}" in
+      Y*|y*) return 0;;
+      N*|n*) return 1;;
     esac
   done
 }
