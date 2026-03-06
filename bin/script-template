@@ -4,7 +4,17 @@ awk 'NR > 4' $(readlink -f $0) ; exit 0
 #-- template starts below this line --
 #!/usr/bin/env bash
 set -euo pipefail
+shopt -s inherit_errexit
+
 if [ -n "${DEBUG:-}" ]; then set -x; fi
+
+EXIT_ACTIONS=$(mktemp)
+onExit() { echo "$1" >> $EXIT_ACTIONS; }
+runExitActions() {
+  tac $EXIT_ACTIONS | bash - > /dev/null 2>&1
+  rm $EXIT_ACTIONS
+}
+trap runExitActions EXIT
 
 APP_NAME=$(basename $(readlink -f $0))
 declare -A COMMAND_HELP
@@ -55,10 +65,15 @@ usageCommand() {
   if [ -n "${aliases:-}" ]; then echo "  alias: ${aliases}"; fi
 }
 
+unknownCommandOption() {
+  local mystery="$@"
+  usageCommand ${FUNCNAME[1]/cmd-/}
+  die "Unknown option: $mystery"
+}
 
 #============================================================
 log() { echo "$@" >&2; }
-die() { echo "${1-}" >&2; exit 1; }
+die() { echo "${1:-}" >&2; exit 1; }
 
 dieIfMissingValue() {
   local param=$1
@@ -135,6 +150,26 @@ cat > $destination <<EOF
 EOF
 }
 
+#============================================================
+registerCommand example \
+  '[-f foo]' \
+  "Example" \
+  "Options:" \
+  "-f, --foo <value> Foo"
+aliasCommand example e
+cmd-example() {
+  local foo
+  while [ -n "${1:-}" ]
+  do
+    case "$1" in
+      -f|--foo) foo=$(requireParameterValue "$@"); shift;;
+      *) unknownCommandOption "$@";;
+    esac
+    shift
+  done
+  dieIfMissingValue --foo "${foo:-}"
+  echo "FOO $foo"
+}
 
 
 #============================================================
