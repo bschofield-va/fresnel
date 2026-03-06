@@ -45,7 +45,7 @@ z-failer-strikes-again apt.corretto.aws
 apt-key add /tmp/corretto.key
 add-apt-repository -S 'deb https://apt.corretto.aws stable main'
 apt-get update -y -q
-apt-get install -y java-21-amazon-corretto-jdk
+apt-get install -y java-25-amazon-corretto-jdk
 EOF
 
 
@@ -70,6 +70,17 @@ chmod +x /usr/local/bin/kubectl
 # Argo Rollouts Kubectl Plugin
 curl -sL -o /usr/local/bin/kubectl-argo-rollouts https://github.com/argoproj/argo-rollouts/releases/latest/download/kubectl-argo-rollouts-linux-arm64
 chmod +x /usr/local/bin/kubectl-argo-rollouts
+EOF
+
+
+#
+# Trivy image scanning
+#
+RUN << EOF
+curl -fs https://aquasecurity.github.io/trivy-repo/deb/public.key | gpg --dearmor > /usr/share/keyrings/trivy.gpg
+echo "deb [signed-by=/usr/share/keyrings/trivy.gpg] https://aquasecurity.github.io/trivy-repo/deb generic main" >> /etc/apt/sources.list.d/trivy.list
+apt-get update
+apt-get install trivy
 EOF
 
 
