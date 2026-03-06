@@ -192,6 +192,8 @@ diffDu() {
 #============================================================
 
 installGitSecrets() {
+  echo "NOPE... not installing git secrets"
+  return
   local sudo="${1:-}"
   local githubRepo=https://github.com/awslabs/git-secrets.git
   local dir=$(mktemp -d)
@@ -202,6 +204,8 @@ installGitSecrets() {
 }
 
 configureGitSecrets() {
+  echo "NOPE... not installing git secrets"
+  return
   local install=sudo
   while [ -n "${1:-}" ]
   do
