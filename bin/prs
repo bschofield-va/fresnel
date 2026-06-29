@@ -116,6 +116,11 @@ cat > $destination <<EOF
 #
 
 #
+# GitHub Organization
+#
+ORGANIZATION=department-of-veterans-affairs
+
+#
 # Your team
 #
 TEAM=department-of-veterans-affairs/lighthouse-shanktopus
@@ -150,6 +155,13 @@ REPOS=(
   lighthouse-vista-docker
   lighthouse-vistalink-mcode
   shanktopus
+)
+
+
+SHORT_NAME_REPLACEMENT=(
+  "health-apis,"
+  "lighthouse,"
+  "-deployment,-du"
 )
 
 EOF
@@ -204,9 +216,15 @@ prettyDate() {
 
 shortRepoName() {
   local repo=$1
-  repo=${repo/lighthouse-/}
-  repo=${repo/health-apis-/}
-  repo=${repo/-deployment/-du}
+
+  for rplce in "${SHORT_NAME_REPLACEMENT[@]}"
+  do
+    local from to
+    from=$(echo ${rplce} | cut -d',' -f1)
+    to=$(echo ${rplce} | cut -d',' -f2)
+    repo=${repo/${from}/${to:-}}
+  done
+
   local abbrevs=2
   while [[ ${#repo} -gt 10 && "$repo" = *-* && $abbrevs -gt 0 ]]
   do
